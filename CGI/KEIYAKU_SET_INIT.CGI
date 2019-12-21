@@ -75,8 +75,7 @@ ${cshld}/${shl} $tmp-datafile > $tmp-result
 [ $? -eq 0 ] || ERROR_EXIT
 
 cat $tmp-result
-
-#testadd111
+#test44
 
 #/////////////////////////////////////////////////////////////////////////
 # 終了部分
