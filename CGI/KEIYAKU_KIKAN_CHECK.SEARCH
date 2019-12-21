@@ -1,0 +1,65 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_KIKAN_CHECK.SEARCH >>> 当日の期間チェック
+# Usage :KEIYAKU_KIKAN_CHECK.SEARCH
+#
+# Written by Zhang.Yunfeng(TRE・CHINA) / Date : 9 Dec. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+sday=$(date +%Y%m%d)
+commond=${lv4d}/KISETU/MASTER/COMMON
+# 変数チェック
+[ $# -ne 2 ] && exit 1
+
+kikan=$1       #期間ID
+rightkikan=$2
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 1.期間ID 2.期間名 3.年 4.季節タイプ
+awk '$1=="'${kikan}'"{print $2}' ${commond}/MST_KIKAN |
+# 1.期間名
+hejoin -k2 - ${commond}/MST_KISETU_UREZAIKO_KIKAN     |
+# 1.季節タイプ 2.季節タイプ名 3.納品開始日 4.納品終了日 5.販売開始日 6.販売終了日 7.期首在庫日
+selcol -c2,4                                          |
+# 1.季節タイプ名 2.納品開始日 3.納品終了日
+awk '$2<="'${sday}'"&&$3>="'${sday}'"'                |
+kuniq -k1
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kuniq -k2 ${commond}/MST_KISETU_UREZAIKO_KIKAN > ${rightkikan}
+# 1.期間名
+[ $? -eq 0 ] || ERROR_EXIT
+
+#////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+#rm -rf $tmp-*
+
+exit 0

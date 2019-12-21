@@ -1,0 +1,302 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_FINAL_DATA_KENSAKU.SEARCH >>> 季節画面データ検索
+# Usage : KEIYAKU_FINAL_DATA_KENSAKU.SEARCH
+#
+# Written by Tan.zhihui(TRE・CHINA) / Date : 23 Aug. 2019
+# Alter by Zhang.Yunfeng(TRE・CHINA) / Date : 2 Dec. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+
+# 変数チェック
+[ $# -ne 10 ] && exit 1 
+
+kikan=$1       #期間ID
+janfile=$2     #JANファイル           
+kisetufile=$3  #季節ID
+stodansya=$4   #商談者ID
+colname=$5     #データ列名
+headname=$6    #帳票ヘッダー
+merge_text=$7  #複数ヘッダー内容
+bgcolor=$8  #文字カラー
+textcolor=$9
+motikosiflg=${10} #消化率項目（持越し抜き）1：抜き
+thisweek=$(sdate thisweek)
+#年ID
+# year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+year=$(date +%Y)
+#AW/SS取得
+kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+
+yearid=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+
+#該当期間の終了日付
+eday=$(awk '$2=="'${yearid}${kisetuname}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KISETU_UREZAIKO_KIKAN)
+if [ -z ${eday} ];then
+  endf="_END"
+  if [ ${kisetuname} == "SS" ];then
+    eday=${yearid}"1130"
+  else
+    eday=$[${yearid}+1]"0531"
+  fi
+else
+  endf=""
+fi
+#該当期間の終了週
+endweek=$(sdate -w ${eday}d)
+#該当期間の終了年
+endyear=$(${endweek:0:4})
+if [ ${year} > ${endyear} ];then
+  year=${endyear}
+fi
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+echo ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${year}*                |
+tov                                                                    |
+awk '$1!="'${lv4d}'/KISETU/DATA/'${kisetuname}'/'${year}'/'${year}'*"' |
+awk '{print $1,substr($1,length($1)-5)}'                               |
+awk '$2<="'${endweek}'"{print $1}'                                     > $tmp-filelist
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+if [ -s $tmp-filelist ];then
+  lstfile=$(tail -n1 $tmp-filelist)
+  thisweek=$(basename ${lstfile})
+else
+  exit 0
+fi
+
+# 季節画面帳票表示
+if [ -s ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/CHOUHYO_SHOW${endf} ];then
+  # 1:季節名 2:部門名 3:カテゴリ名 4:サブカテゴリ名 5:セグメント名 6:サブセグメント名 7:JAN 8:商品名 9:商談者CD 10:商談者名 
+  #11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残 19:今年契約数 20:契約数合計
+  #21:契約残 22:現在在庫 23:消化日数 24:先週売数 25:先週まで計画数 26:先週まで売数 27:全体消化率 28:先週まで消化率 29:昨年実績合計 30:今年売数合計
+  #31:地域別センター在庫 ...
+
+  #マスタ季節取得
+  hejoin -k1 <(echo ${kisetuid}) ${lv4d}/KISETU/MASTER/COMMON/MST_KISETUTYPE_TBLKISETU |
+  # 1.季節タイプ(1:SS/2:AW) 2.季節区分ID 3.TBL季節タイプID
+  hejoin -k2 ${kisetufile}                                                             |
+  # 1.季節タイプ(1:SS/2:AW) 2.季節区分ID 3.TBL季節タイプID
+  kuniq -k3                                                                            > $tmp-tblkisetuid
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  kuniq -k7 ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/CHOUHYO_SHOW${endf}      |
+  # 1.JAN 
+  hejoin -k1 - ${tbld}/JAN_KISETU                                                          |
+  # 1.JAN 2.季節CD
+  hejoin -k2 $tmp-tblkisetuid                                                              |
+  # 1.JAN 2.季節CD
+  hejoin -k7 - ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/CHOUHYO_SHOW${endf}   |
+  # 1:季節名 2:部門名 3:カテゴリ名 4:サブカテゴリ名 5:セグメント名 6:サブセグメント名 7:JAN 8:商品名 9:商談者CD 10:商談者名 
+  #11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残 19:今年契約数 20:契約数合計
+  #21:契約残 22:現在在庫 23:消化日数 24:先週売数 25:先週まで計画数 26:先週まで売数 27:全体消化率 28:先週まで消化率 29:昨年実績合計 30:今年売数合計
+  #31:地域別センター在庫 ...
+  hijoin -k7 ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/CHOUHYO_SHOW_ADD${endf} |
+  #1:季節名 2:部門名 3:カテゴリ名 4:サブカテゴリ名 5:セグメント名 6:サブセグメント名 7:JAN 8:プロパー売数
+  #9:契約プロパー消化率 10:期首在庫 11:計画数 12:計画残 13:計画消化率 14:契約プロパー消化率（持越し抜き）
+  #15:計画消化率（持越し抜き） 16:商品名 17:商談者CD 18:商談者名 19:商談契約数 20:初期売価 21:ベンダーCD
+  #22:ベンダー名 23:ベンダー納期 24:原価 25:売価 26:昨年契約残 27:今年契約数 28:契約数合計 29:契約残
+  #30:現在在庫 31:消化日数 32:先週売数 33:先週まで計画数 34:先週まで売数 35:全体消化率 36:先週まで消化率
+  #37:昨年実績合計 38:今年売数合計 39:地域別センター在庫 ...
+  if [ ${motikosiflg} -eq 1 ];then
+    selcol -c1,7 -c16,29 -c8 -c14 -c30,32 -c10,12 -c15 -c38,NF
+    # 1:季節 2:部門 3:カテゴリ 4:サブカテゴリ 5:セグメント 6:サブセグメント 7:JAN 8:商品名 9:商談者CD 10:商談者
+    # 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残
+    # 19:今年契約数 20:契約数合計 21:契約残 22:プロパー売数 23:契約プロパー消化率（持越し抜き） 24:現在在庫 25:消化日数
+    # 26:先週売数 27:期首在庫 28:計画数 29:計画残 30:計画消化率（持越し抜き） 31:今年売数合計 32:地域別センター在庫 ...
+  else
+    selcol -c1,7 -c16,29 -c8,9 -c30,32 -c10,13 -c38,NF
+    # 1:季節 2:部門 3:カテゴリ 4:サブカテゴリ 5:セグメント 6:サブセグメント 7:JAN 8:商品名 9:商談者CD 10:商談者
+    # 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残
+    # 19:今年契約数 20:契約数合計 21:契約残 22:プロパー売数 23:契約プロパー消化率 24:現在在庫 25:消化日数
+    # 26:先週売数 27:期首在庫 28:計画数 29:計画残 30:計画消化率 31:今年実績合計 32:地域別センター在庫 ...
+  fi                                                                                    > $tmp-show_data
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+  
+  # JANと階層条件のとき
+  if [ -s ${janfile} ];then
+    hejoin -k7 ${janfile} $tmp-show_data > $tmp-jan_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  else
+    cp $tmp-show_data $tmp-jan_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  fi
+
+  # 商談者条件のとき
+  if [ -s ${stodansya} ];then
+    hejoin -k9 ${stodansya} $tmp-jan_result > $tmp-syodan_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  else
+    cp $tmp-jan_result $tmp-syodan_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  fi
+else
+  :> $tmp-syodan_result
+fi
+
+#データ列数
+datacnt=$(colc $tmp-syodan_result)
+
+seq 1 ${datacnt}      |
+# 1.列ヘッダー
+awk '{print "F"$1}'   |
+# 1.列ヘッダー
+toh                   > $tmp-datahead
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#データ列戻る
+cat $tmp-datahead > ${colname}
+[ $? -eq 0 ] || ERROR_EXIT
+
+#データ戻る
+selcol -c7 -c9 -c13 -c1,NF $tmp-syodan_result                 |
+# 1:JAN 2:商談者CD 3:ベンダーCD 4:季節 5:部門 6:カテゴリ 7:サブカテゴリ 8:セグメント 9:サブセグメント
+# 10:JAN 11:商品名 12:商談者CD 13:商談者 14:商談契約数 15:初期売価 16:ベンダーCD 17:ベンダー名
+# 18:ベンダー納期 19:原価 20:売価 21:昨年契約残 22:今年契約数 23:契約数合計 24:契約残
+# 25:プロパー売数 26:契約プロパー消化率（持越し抜き） 27:現在在庫 28:消化日数 29:先週売数
+# 30:期首在庫 31:計画数 32:計画残 33:計画消化率（持越し抜き） 34:今年売数合計 35:地域別センター在庫 ...
+fmtfloat -c1,3                                                |
+awk '{print $1=="0"?"_":$1,$2=="0"?"_":$2,$1=="0"?"_":$3,$0}' |
+# 1:JAN 2:商談者CD 3:ベンダーCD 4:JAN 5:商談者CD 6:ベンダーCD 7:季節 8:部門 9:カテゴリ 10:サブカテゴリ
+# 11:セグメント 12:サブセグメント 13:JAN 14:商品名 15:商談者CD 16:商談者 17:商談契約数 18:初期売価
+# 19:ベンダーCD 20:ベンダー名 21:ベンダー納期 22:原価 23:売価 24:昨年契約残 25:今年契約数 26:契約数合計
+# 27:契約残 28:プロパー売数 29:契約プロパー消化率（持越し抜き） 30:現在在庫 31:消化日数 32:先週売数
+# 33:期首在庫 34:計画数 35:計画残 36:計画消化率（持越し抜き） 37:今年売数合計 38:地域別センター在庫 ...
+selcol -c7,12 -c1 -c14 -c2 -c16,18 -c3 -c20,NF                |
+# 1:季節 2:部門 3:カテゴリ 4:サブカテゴリ 5:セグメント 6:サブセグメント 7:JAN 8:商品名 9:商談者CD 10:商談者
+# 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残
+# 19:今年契約数 20:契約数合計 21:契約残 22:プロパー売数 23:契約プロパー消化率（持越し抜き） 24:現在在庫 25:消化日数
+# 26:先週売数 27:期首在庫 28:計画数 29:計画残 30:計画消化率（持越し抜き） 31:今年売数合計 32:地域別センター在庫 ...
+cat $tmp-datahead -
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+weekcnt=$(rowc ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/WEEK_INFO${endf})
+seq 1  ${weekcnt}   |
+awk '{print "売数"}' |
+toh                 > $tmp-jiseki_name
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+# ヘッダーデータ作成
+
+
+if [ ${motikosiflg} -eq 1 ];then
+  cat << FIN >> $tmp-head_one
+季節 部門 カテゴリ サブカテゴリ セグメント サブセグメント JAN 商品名 商談者CD 商談者名 商談契約数 初期売価 ベンダーCD ベンダー名 ベンダー納期 原価 売価 昨年契約残 今年契約数 契約数合計 契約残 プロパー売数 契約プロパー消化率（持越し抜き） 現在在庫 消化日数 先週売数 期首在庫 計画数 計画残 計画消化率（持越し抜き） 今年売数合計
+FIN
+else
+  cat << FIN >> $tmp-head_one
+季節 部門 カテゴリ サブカテゴリ セグメント サブセグメント JAN 商品名 商談者CD 商談者名 商談契約数 初期売価 ベンダーCD ベンダー名 ベンダー納期 原価 売価 昨年契約残 今年契約数 契約数合計 契約残 プロパー売数 契約プロパー消化率 現在在庫 消化日数 先週売数 期首在庫 計画数 計画残 計画消化率 今年売数合計
+FIN
+fi
+
+selcol -c2 ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/SISYA_INFO${endf} |
+# 支社名
+toh                                                                                |
+hcat $tmp-head_one - $tmp-jiseki_name                                              > ${headname}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+sisyacnt=$(rowc ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/SISYA_INFO${endf})
+
+# 31 + x null
+seq 1 $[31+${sisyacnt}] |
+tov                     |
+awk '{print "null"}'    |
+toh                     > $tmp-merge_text_part1
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/WEEK_INFO${endf} |
+# 1.年週
+substr -c1.5.2                                                             |
+# 1,週
+awk '{print $1"W"}'                                                        |
+# 1.週W
+toh                                                                        |
+hcat $tmp-merge_text_part1 -                                               |
+cat $tmp-datahead -                                                        > ${merge_text}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#値下げの場合、画面のセルは赤色を付ける
+if [ -e ${lv4d}/KISETU/BAIHEN_DISCOUNT/DISCOUNTPRICE ];then
+    kuniq -k7 $tmp-syodan_result                                                       |
+    # 1.JAN
+    crossjoin - ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/WEEK_INFO${endf} |
+    # 1.JAN 2.週CD
+    hijoin -k1,2 - ${lv4d}/KISETU/BAIHEN_DISCOUNT/DISCOUNTPRICE                        |
+    # 1.JAN 2.週CD
+    #hejoin -k3 <(echo 1)                                            |
+    kuniq -k1,2                                                                        > $tmp-discount_data
+    # 1.JAN 2.週CD
+    [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+    :> $tmp-discount_data
+fi
+
+if [ -s $tmp-discount_data ];then
+  kuniq -k7 $tmp-syodan_result |
+  # 1.JAN 
+  insseq                       |
+  # 1.順番 2.JAN
+  scalc '$2,$1+3'              > $tmp-jan_num
+  # 1.JAN 2.行番号
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  center_colcnt=$(rowc ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/SISYA_INFO${endf})  
+  startcol=$[$center_colcnt + 31] 
+  cat ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/WEEK_INFO${endf} |
+  # 1.週CD
+  insseq                                                                     |
+  #1.順番 2.週CD
+  scalc '$2,$1+'${startcol}                                                  > $tmp-week_num
+  # 1.週CD 2.列番号
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  
+  hijoin -k1 $tmp-jan_num $tmp-discount_data |
+  # 1.JAN 2.行番号 3.週CD 
+  hijoin -k3 $tmp-week_num -                 > ${bgcolor}
+  # 1.JAN 2.行番号 3.週CD 4.列番号  
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  echo "true" >/dev/null
+fi
+
+#契約残マイナスカラー対応
+insseq $tmp-syodan_result                |
+scalc '$1+3,$22'                         |
+awk '$2<0{print $1,"21"}'                > ${textcolor}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+#rm -rf $tmp-*
+
+exit 0

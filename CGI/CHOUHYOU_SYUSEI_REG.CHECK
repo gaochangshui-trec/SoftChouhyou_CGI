@@ -1,0 +1,173 @@
+#!/bin/bash -xv
+#
+#CHOUHYOU_PLANQTY_REG_CHECK.LOGIN >>> 計画数画面登録
+# Usage : CHOUHYOU_PLANQTY_REG_CHECK.LOGIN
+#
+# Written by Li.dan(TRE・CHINA)  /Date : 8 Jan. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+
+dir=/home/trial
+lv4d=${dir}/APDATA/SOFT_CHOUHYOU/POMPA
+cshld=${dir}/AP/SOFT_CHOUHYOU/CGI/COMMON_SHELL
+tbld=/SKCWEB/TBL
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+stime=$(date +%Y%m%d%H%M%S)
+sday=$(date +%Y%m%d)
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+IS_RIGHT_WEEK()
+{
+  thisyear=$1
+  #終了週確定
+  endw=$(sdate -w ${thisyear}1231d)
+  if [ ${endw:0:4} -ne ${thisyear} ];then
+    endw=$(sdate ${endw}w/-1)
+  else
+    echo "true" >/dev/null
+  fi
+  echo ${endw}
+}
+
+IS_NUMCHECK()
+{
+  isnum=false
+  echo $1 | [ -n "`sed -n '/^[0-9][0-9]*$/p'`" ] && isnum=true
+  echo ${isnum}
+}
+
+IS_JANEXIST()
+{
+  isHas=false
+  
+  echo $1                       |
+  fmtfixed -w20 -c1             |
+  hejoin -k1 - ${tbld}/JAN_NAME > $tmp-jan_name
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  [ -s $tmp-jan_name ] && isHas=true
+  echo ${isHas}
+}
+
+[ $# -eq 5 ] || ERROR_EXIT
+
+bg_color="red"
+text_color="white"
+
+datafile=$1
+outfile=$2
+year=$3
+mode=$4 # 1:SS/2:AW
+flgdata=$5 # 2:マスタ存在しない 3:季節区分間違い
+
+:> $tmp-coordinate
+
+cat ${datafile}     |
+#1:年 2:アイテム名 3:JAN 4.:計画数
+insseq              |
+# 1.番号 2:年 3:アイテム名 4:JAN 5.:計画数
+scalc '$1-1,$[2:5]' |
+# 1.番号 2:年 3:アイテム名 4:JAN 5.:計画数
+fmtfixed -w20 -c4                           |
+hejoin -v -k4 ${tbld}/JAN_NAME              |
+awk '{print $1,"3",$1,"3"}'                 |
+tee $tmp-coordinate                         |
+crossjoin - <(echo ${bg_color})             > $tmp-data
+# 1.開始行 2.開始列 3.終了行 4.終了列 5.色
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+if [ -s $tmp-data ];then
+  echo "r1 c1 r2 c2 color" |
+  cat - $tmp-data
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  kuniq -k1,4 $tmp-coordinate       |
+  crossjoin - <(echo ${text_color}) > $tmp-data_color
+  # 1.開始行 2.開始列 3.終了行 4.終了列 5.色
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+else
+  cat $tmp-data
+  :> $tmp-data_color
+fi
+
+#JANマスタ存在しない場合
+if [ -s $tmp-data_color ];then
+  echo "r1 c1 r2 c2 color" |
+  cat - $tmp-data_color    > ${outfile}
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  echo 2 > ${flgdata}
+else
+  # ################################
+  # JAN季節区分は間違い場合
+  # ################################
+
+  hejoin -k1 <(echo ${mode}) ${lv4d}/KILLER/MASTER/COMMON/MST_KISETUTYPE_TBLKISETU |
+  # 1.季節タイプ 2.区分 3.季節CD
+  kuniq -k3                                                                        > $tmp-kisetuinfo
+  # 1.季節CD
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  # 季節間違い季節区分対応
+  cat ${datafile}                             |
+  #1:年 2:アイテム名 3:JAN 4.:計画数
+  insseq                                      |
+  # 1.番号 2:年 3:アイテム名 4:JAN 5.:計画数
+  scalc '$1-1,$[2:5]'                         |
+  # 1.番号 2:年 3:アイテム名 4:JAN 5.:計画数
+  fmtfixed -w20 -c4                           |
+  hijoin -k4 ${tbld}/JAN_KISETU               |
+  # 1.番号 2:年 3:アイテム名 4:JAN 5.季節ID 6.:計画数
+  hejoin -v -k5 $tmp-kisetuinfo               |
+  awk '{print $1,"3",$1,"3"}'                 |
+  tee $tmp-coordinate                         |
+  crossjoin - <(echo ${bg_color})             > $tmp-data
+  # 1.開始行 2.開始列 3.終了行 4.終了列 5.色
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  if [ -s $tmp-data ];then
+    echo "r1 c1 r2 c2 color" |
+    cat - $tmp-data
+    [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+  else
+    cat $tmp-data
+  fi
+
+  kuniq -k1,4 $tmp-coordinate       |
+  crossjoin - <(echo ${text_color}) |
+  cat <(echo "r1 c1 r2 c2 color") - > ${outfile}
+  # 1.開始行 2.開始列 3.終了行 4.終了列 5.色
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  echo 3 > ${flgdata}
+fi
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+
+rm -rf $tmp-*
+
+exit 0

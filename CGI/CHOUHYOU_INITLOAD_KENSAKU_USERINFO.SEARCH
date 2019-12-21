@@ -1,0 +1,60 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_INITLOAD_KENSAKU_USERINFO.SEARCH >>> 登録者情報取
+# Usage : CHOUHYOU_INITLOAD_KENSAKU_USERINFO.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 5 Aug. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+
+# 変数チェック
+[ $# -ne 2 ] && exit 1 
+
+kisetutype=$1  #期間ID
+year=$2        #年ID
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+touch ${pompad}/KILLER/MASTER/${kisetutype}/${year}/MST_LOGIN_USER
+cat ${pompad}/KILLER/MASTER/${kisetutype}/${year}/MST_LOGIN_USER |
+# 1:登録者CD 2:登録者名   
+fmtfloat -c1                                             |
+# 1:登録者CD 2:登録者名
+cat <(echo id name) -                                    > $tmp-user
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat $tmp-user
+[ $? -eq 0 ] || ERROR_EXIT
+
+#////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+rm -rf $tmp-*
+
+exit 0

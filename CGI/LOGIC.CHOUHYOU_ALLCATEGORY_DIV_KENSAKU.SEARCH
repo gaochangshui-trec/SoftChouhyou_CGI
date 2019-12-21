@@ -1,0 +1,136 @@
+#!/bin/bash -xv
+#
+# LOGIC.CHOUHYOU_ALLCATEGORY_DIV_KENSAKU.SEARCH >>>全体進捗画面データ抽出
+# Usage : LOGIC.CHOUHYOU_ALLCATEGORY_DIV_KENSAKU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 21 Dec. 2018
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+#test
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  echo '{"error":"1"}'
+  exit 1
+}
+
+[ $# -eq 6 ] || ERROR_EXIT
+
+mode=$1
+div=$2
+category=$3
+outfolder=$4
+year=$5
+usercd=$6
+
+if [ ${mode} -eq 2 ] ; then
+  datad=${pompad}/KILLER_AW
+elif [ ${mode} -eq 3 ] ; then
+  datad=${pompad}/KILLER_YEAR
+else
+  datad=${pompad}/KILLER_SS
+fi
+
+mkdir -p ${datad}/${year}
+touch ${datad}/${year}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU
+
+# ${category} : 2@3@3@6
+if [ ${category} == "_" ];then
+  hejoin -k1 <(echo ${div}) ${datad}/${year}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU    |
+  # 1:DIVCD 2:CATEGORYCD 3:ITEMCD 4:販売開始週 5:販売開始週 6:計画数
+  kuniq -k2                     > $tmp-categoryfile
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  echo ${category} |
+  sed 's/@/\n/g'   |
+  fmtfixed -w4 -c1 |
+  kuniq -k1        > $tmp-categoryfile
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+fi
+
+:> $tmp-totalinfo
+mkdir -p $tmp-foldertmp
+
+hejoin -k1 <(echo ${div}) ${datad}/${year}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU |
+# 1.DIVCD 2.カテゴリCD 3.アイテムCD 4.販売開始週 5.販売終了週 6.計画数量
+kuniq -k2                                                         |
+# 1.カテゴリCD
+hejoin -k1 - $tmp-categoryfile                                    |
+# 1.カテゴリCD
+while read category ; do
+  # ディビジョン情報
+  shl=CHOUHYOU_ALLCATEGORY_KENSAKU.SEARCH
+  ${shld}/${shl} ${year} ${div} ${category} ${mode} ${usercd} $tmp-foldertmp
+  [ $? -eq 0 ] || ERROR_EXIT
+:; done
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+echo $tmp-foldertmp/*          |
+tov                            |
+awk '$1!="'$tmp'-foldertmp/*"' > $tmp-tmpdata
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+[ -s $tmp-tmpdata ] || exit 0
+
+cat $tmp-tmpdata |
+xargs cat        > ${outfolder}/katebetudata_${div}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+# 合計計算
+divname=$(kuniq -k1 ${outfolder}/katebetudata_${div})
+# 1:DIV名 2:カテゴリ名 3:季節 4:販売期間 5:計画 6:昨年カテゴリ別売上数 7:今年カテゴリ別売上数
+# 8:今週まで計画数 9:達成率 10:今週まで昨年カテゴリ別売上数 11:昨対比 12:今年カテゴリ別売上 
+# 13:今週まで昨年カテゴリ別売上 14:売上昨対比 15:消化率作成 16:カテゴリ別在庫数 17:在庫売価高
+# 18:消化日数 19:計画残数 20:計画残売価高
+selcol -c5,8 -c10 -c12,13 -c16,20 ${outfolder}/katebetudata_${div}     |
+# 1:計画 2:昨年カテゴリ別売上数 3:今年カテゴリ別売上数 4:今週まで計画数  
+# 5:今週まで昨年カテゴリ別売上数  6:今年カテゴリ別売上 7:今週まで昨年カテゴリ別売上 
+# 8:カテゴリ別在庫数 9:在庫売価高 10:消化日数 11:計画残数 12:計画残売価高
+sumup -c1,NF                                            |
+scalc '$[1:12],$3*100/$4,$3*100/$5,$6*100/$7,$3*100/$1' |
+# 1:計画 2:昨年カテゴリ別売上数 3:今年カテゴリ別売上数 4:今週まで計画数  5:今週まで昨年カテゴリ別売上数  6:今年カテゴリ別売上 
+# 7:今週まで昨年カテゴリ別売上 8:カテゴリ別在庫数 9:在庫売価高 10:消化日数 11:計画残数 12:計画残売価高 13.達成率 
+# 14.昨対比 15.売上昨対比 16.消化率作成 
+round -tA -c13.0 -c14.0 -c15.0 -c16.0                   |
+awk '{print $0,$13"%",$14"%",$15"%",$16"%"}'            |
+selcol -c1,12 -c17,20                                   |
+# 1:計画 2:昨年カテゴリ別売上数 3:今年カテゴリ別売上数 4:今週まで計画数  5:今週まで昨年カテゴリ別売上数  6:今年カテゴリ別売上 
+# 7:今週まで昨年カテゴリ別売上 8:カテゴリ別在庫数 9:在庫売価高 10:消化日数 11:計画残数 12:計画残売価高 13.達成率 
+# 14.昨対比 15.売上昨対比 16.消化率作成
+crossjoin - <(echo ${divname} "合計 - -")               |
+# 1:計画 2:昨年カテゴリ別売上数 3:今年カテゴリ別売上数 4:今週まで計画数  5:今週まで昨年カテゴリ別売上数  6:今年カテゴリ別売上 
+# 7:今週まで昨年カテゴリ別売上 8:カテゴリ別在庫数 9:在庫売価高 10:消化日数 11:計画残数 12:計画残売価高 13.達成率 14.昨対比 
+# 15.売上昨対比 16.消化率作成17.DIV名 18.合計 19.季節 20.販売期間
+selcol -c17,20 -c1,4 -c13 -c5 -c14 -c6,7 -c15,16 -c8,12 |
+# 1:DIV名 2:カテゴリ名 3:季節 4:販売期間 5:計画 6:昨年カテゴリ別売上数 7:今年カテゴリ別売上数 8:今週まで計画数 9:達成率 
+# 10:今週まで昨年カテゴリ別売上数 11:昨対比 12:今年カテゴリ別売上 13:今週まで昨年カテゴリ別売上 14:売上昨対比 15:消化率作成 
+# 16:カテゴリ別在庫数 17:在庫売価高 18:消化日数 19:計画残数 20:計画残売価高
+cat ${outfolder}/katebetudata_${div} -                 > ${outfolder}/sumdata_${div}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-*
+
+exit 0

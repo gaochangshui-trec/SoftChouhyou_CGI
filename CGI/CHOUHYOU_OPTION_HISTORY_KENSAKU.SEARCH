@@ -1,0 +1,67 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_OPTION_HISTORY_KENSAKU.SEARCH >>>帳票システム履歴作成 
+# Usage : CHOUHYOU_OPTION_HISTORY_KENSAKU.SEARCH
+#
+# Written by Wang.Yan(TRE・CHINA) / Date : 29 Oct. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+# 変数チェック
+[ $# -ne 3 ] && exit 1
+
+#変数定義
+keyid=$1    # 順番
+shlname=$2  # シェル名
+usercd=$3   # ユーザーCD
+
+#ユーザーCD加工
+usedcdnew=$(echo ${usercd}|fmtfixed -w10 -c1)
+
+# フォルダー作成
+mkdir -p ${lv4d}/OPTION_HIS/${usedcdnew}/
+[ $? -eq 0 ] || ERROR_EXIT
+
+hejoin -k1 <(echo ${usedcdnew}) ${tbld}/JYUGYOIN_NAME > $tmp-userinfo
+# 1.ユーザーCD 2.ユーザー名
+[ $? -eq 0 ] || ERROR_EXIT
+
+#履歴作成
+echo ${keyid} ${shlname}                        |
+#1.順番 2.シェル名
+hijoin -k1,2 ${lv4d}/TBL/MST_CHOUHYOU_HISTORY   |
+#1.順番 2.シェル名 3.区分 4.画面 5.機能
+crossjoin - $tmp-userinfo                       >${lv4d}/OPTION_HIS/${usedcdnew}/$(date +%Y%m%d%H%M%S)_HIS
+#1.順番 2.シェル名 3.区分 4.画面 5.機能 6.ユーザーCD 7.ユーザー名
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+exit 0

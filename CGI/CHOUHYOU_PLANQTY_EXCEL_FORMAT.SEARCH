@@ -1,0 +1,122 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_PLANQTY_EXCEL_FORMAT.SEARCH >>> 予測EXCEL出力
+# Usage : CHOUHYOU_PLANQTY_EXCEL_FORMAT.SEARCH
+#
+# Written by Gao.Changshui(TRE・CHINA) / Date : 11 Jan. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+formatd=${cgishld}/EXCEL_FORMAT
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+killerd=${lv4d}/KILLER
+masterd=${killerd}/MASTER
+sday=$(date +%Y%m%d)
+
+dwnd=/home/trial/AP/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+hostip=$(readvalue -uEXCEL_OUT ${lv4d}/TBL/IP_CONFIG)
+expass=http://${hostip}/~trial/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+# 引数の確認
+[ $# -ne 4 ] && exit 1
+
+# 1.Inputファイル
+tmp=$1-$(basename $0)_$$
+kikanid=$2
+kisetutype=$3
+usercd=$4
+zipname="計画数設定FMT"_${sday}_${usercd}.zip
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+# 1:期間ID 2:期間名 3:年 4:季節タイプ 
+hejoin -k1 <(echo ${kikanid}) ${masterd}/COMMON/MST_KIKAN >$tmp-kikan
+# 1:期間ID 2:期間名 3:年 4:季節タイプ
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kikan_name=$(selcol -c2 $tmp-kikan)
+kisetuflg=$(selcol -c4 $tmp-kikan)
+
+echo ${kisetutype} |
+sed 's/,/ /g'      |
+tov                |
+kuniq -k1          |
+hejoin -k1 - ${masterd}/COMMON/MST_KISETUTYPE |
+hejoin -k3 <(echo ${kisetuflg})               |
+selcol -c2                                    |
+toh -l"・"                                    > $tmp-kisetu
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kisetu_name=$(selcol -c1 $tmp-kisetu)
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+mkdir -p ${formatd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+filename="計画数設定FMT"_$(date +%Y%m%d)_$(date +%H%M%S)
+
+mkdir -p $tmp/outfile
+[ $? -eq 0 ] || ERROR_EXIT
+
+:> $tmp-script
+
+echo ${kikan_name} > $tmp-kikan_name
+echo ${kisetu_name} > $tmp-kisetu_name
+
+echo FILLDATA 1 B3 $tmp-kikan_name >> $tmp-script
+echo FILLDATA 1 D3 $tmp-kisetu_name >> $tmp-script
+
+# EXCEL作成
+mkExcel -t${formatd}/SET_FORMAT.xlsx -o$tmp/outfile/${filename}.xlsx -S$tmp-script
+[ $? -eq 0 ] || ERROR_EXIT
+
+mkdir -p ${dwnd}_${usercd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+rm -rf ${dwnd}_${usercd}/${zipname}
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo $tmp/outfile/*    |
+tov                    |
+sed 's/\\/\\\\/g'      |
+while read xlsname ; do
+  a=$(nkf -sxLw <(echo $xlsname))
+  [ $? -eq 0 ] || ERROR_EXIT
+
+  b=$(echo $a |awk '{print length($1)-1}')
+  [ $? -eq 0 ] || ERROR_EXIT
+  cp $xlsname ${a:0:$b}
+
+  zip -jgq ${dwnd}_${usercd}/${zipname} ${a:0:$b}
+  [ $? -eq 0 ] || ERROR_EXIT
+: ; done
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+excelurl=${expass}_${usercd}/${zipname}
+
+echo ${excelurl}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+exit 0

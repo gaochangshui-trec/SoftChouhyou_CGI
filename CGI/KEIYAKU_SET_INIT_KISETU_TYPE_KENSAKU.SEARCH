@@ -1,0 +1,62 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_SET_INIT_KISETU_TYPE_KENSAKU.SEARCH >>> 季節情報検索
+# Usage : KEIYAKU_SET_INIT_KISETU_TYPE_KENSAKU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 19 Jan. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+# 変数チェック
+[ $# -ne 2 ] && exit 1 
+
+type_kisetu_name=$1
+kisetu_name=$2
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+cat ${pompad}/TBL/KISETU_TYPE_KISETU            |
+# 1:typecd 2:季節CD
+hejoin -v -k2 <(echo 0000)                      |
+# 1:typecd 2:季節CD
+hijoin -k2 ${tbld}/KISETU_NAME                  |
+# 1:typecd 2:季節CD 3:季節名
+cat <(echo tid id text) -                       >${type_kisetu_name}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+delcol -c1 ${type_kisetu_name}                  >${kisetu_name}
+# 1:季節CD 2:季節名
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+rm -rf $tmp-*
+exit 0

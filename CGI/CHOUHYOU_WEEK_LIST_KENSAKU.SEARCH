@@ -1,0 +1,79 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_WEEK_LIST_KENSAKU.SEARCH >>> 週リスト表示
+# Usage : CHOUHYOU_WEEK_LIST_KENSAKU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 19 Dec. 2018
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  echo '{"error":"1"}'
+  exit 1
+}
+
+# 変数チェック
+[ $# -ne 3 ] && exit 1
+yearid=$1
+startweek=$2
+endweek=$3
+nextyear=$[yearid+1]
+
+endw1=$(sdate -w ${yearid}1231d)
+if [ ${endw1:0:4} -ne ${yearid} ];then
+  endw1=$(sdate ${endw1}w/-1)
+else
+  echo "true" >/dev/null
+fi
+
+endw2=$(sdate -w ${nextyear}1231d)
+if [ ${endw1:0:4} -ne ${nextyear} ];then
+  endw2=$(sdate ${endw2}w/-1)
+else
+  echo "true" >/dev/null
+fi
+
+sdate -e ${yearid}01w ${endw1}w |
+tov                             |
+#substr -c1.5.2                  |
+kuniq -k1                       |
+tee $tmp-stweek                 |
+selcol -c1 -c1                  |
+cat <(echo id text) -           > ${startweek}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+sdate -e ${yearid}01w ${endw2}w |
+tov                             |
+#substr -c1.5.2                  |
+cat - $tmp-stweek               |
+kuniq -k1                       |
+selcol -c1 -c1                  |
+cat <(echo id text) -           > ${endweek}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-*
+
+exit 0

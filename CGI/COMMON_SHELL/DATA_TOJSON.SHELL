@@ -1,0 +1,109 @@
+#!/bin/bash
+#
+# DATA_TOJSON.SHELL >>>  データファイルからJSONデータへ変換
+#
+# Written by Gao.changshui(tre-japan /Date : 04 Jan. 2018
+
+# パスの定義
+export PATH=/home/SMART_TRIAL:/home/SMART:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+# 初期設定
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+shld=$(cd `dirname $0`; pwd)
+
+# USAGEを表示して終了する関数
+function USAGE {
+	cat <<- END 1>&2
+          NAME
+             DATA_TOJSON.SHELL
+
+          SYNOPSIS
+             DATA_TOJSON.SHELL [-H] INPUTFILE
+
+             DATA_TOJSON.SHELL [--help] [--version]
+
+          DESCRIPTION
+             - ファイルデータからJSONのデータへ変換
+
+          OPTIONS
+            -H 
+              指定のヘッダーを使う
+              なしの場合F1,F2,F3....作成
+
+            INPUTFILE              
+              1.データファイル/変数 2.データID 3.データ種類(S:変数,F:ファイル)
+              例: 
+              cat << FIN > /path/datafile
+              1 error S 0
+              flg resultflg  S 1
+              /path/datafile1 dataid1 F _
+              /path/datafile2 dataid2 F _
+              FIN
+
+              ./DATA_TOJSON.SHELL /path/datafile
+              ./DATA_TOJSON.SHELL -H /path/datafile
+
+              -Hの場合,/path/datafile1 と/path/datafile2ファイルのfirst行は列名としてJSONデータを作成する
+              -Hなし場合 ディフォルトの列名はF1,F2...
+            --help help
+
+            --version
+                version
+	END
+	rm -f $tmp-*
+	exit 0
+}
+
+function VERINFO {
+	cat <<- END 1>&2
+            Written by Gao.Changshui Computer, Inc.
+
+            Copyright (C) 2018 Trial Retail Engineering, Inc.
+	END
+	rm -f $tmp-*
+	exit 0
+}
+
+# 引数がなければUSAGEを表示して終了
+[ "${#@}" -eq 0 -o "$1" == "--help" ] && USAGE
+
+# 引数がなければバージョン情報を表示して終了
+[ "${#@}" -eq 0 -o "$1" == "--version" ] && VERINFO
+
+if [ "${#@}" -eq 1 ];then
+  inputfile=$1
+  if [ ! -e ${inputfile} ];then
+     echo "パラメータファイルが存在しない!"
+     exit 1
+  fi
+
+  shl=COMMON_JSONDATA_OUT.SHELL
+  ${shld}/${shl} ${inputfile}
+  [ $? -eq 0 ] || exit 1
+
+elif [ "${#@}" -eq 2 ];then
+  headflg=$1
+  inputfile=$2
+
+  if [ ${headflg} != "-H" ];then
+    echo ${headflg}"ではない,-Hを入力してください"
+    exit 1
+  fi
+
+  if [ ! -e ${inputfile} ];then
+     echo "パラメータファイルが存在しない!"
+     exit 1
+  fi
+
+  shl=COMMON_TOJSON.SHELL
+  ${shld}/${shl} ${inputfile}
+  [ $? -eq 0 ] || exit 1
+
+else
+  echo "正しいパラメータを入力してください!"
+fi
+
+# 終了
+rm -f $tmp-*
+exit 0

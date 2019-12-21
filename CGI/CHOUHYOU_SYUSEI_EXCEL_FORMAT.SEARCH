@@ -1,0 +1,137 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_SYUSEI_EXCEL_FORMAT.SEARCH >>> 既存改修画面EXCEL出力
+# Usage : CHOUHYOU_SYUSEI_EXCEL_FORMAT.SEARCH 
+#
+# Written by Li.dan(TRE・CHINA) / Date : 11 Jan. 2019
+
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+formatd=${cgishld}/EXCEL_FORMAT
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+killerd=${lv4d}/KILLER
+masterd=${killerd}/MASTER
+
+sday=$(date +%Y%m%d)
+
+dwnd=/home/trial/AP/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+hostip=$(readvalue -uEXCEL_OUT ${lv4d}/TBL/IP_CONFIG)
+expass=http://${hostip}/~trial/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+
+# 引数の確認
+[ $# -ne 10 ] && exit 1
+
+# 1.Inputファイル
+tmp=$1-$(basename $0)_$$
+kikan_name=$2
+kisetutype=$3
+usercd=$4
+datafile=$5
+div=$6
+line=$7
+bumon=$8
+mode=$9
+year=${10}
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+mkdir -p ${formatd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+:> $tmp-script
+filename="計画数変更FMT"_$(date +%Y%m%d)_$(date +%H%M%S)
+
+mkdir -p $tmp/outfile
+[ $? -eq 0 ] || ERROR_EXIT
+
+:> $tmp-script
+
+hejoin -k1,3 <(echo ${div} ${line} ${bumon}) ${masterd}/${mode}/${year}/MST_DIV_LINE_BUMON_NAME   |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:部門名
+kuniq -k1,4                          |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:部門名
+selcol -c4                           >$tmp-bumon_name
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+hejoin -k1,2 <(echo ${div} ${line}) ${masterd}/${mode}/${year}/MST_DIV_LINE_NAME |
+# 1:ディビジョンCD 2:ラインCD 3:ライン名
+kuniq -k1,3                       |
+selcol -c3                        >$tmp-line_name
+# 1:ライン名
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cnttotal=$(rowc ${datafile})
+datacnttotal=$[cnttotal+7]
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo ${kikan_name} > $tmp-kikan_name
+echo ${kisetutype} > $tmp-kisetutype
+
+echo FILLDATA 1 B3 $tmp-kikan_name >> $tmp-script
+echo FILLDATA 1 D3 $tmp-kisetutype >> $tmp-script
+echo FILLDATA 1 B4 $tmp-line_name  >> $tmp-script
+echo FILLDATA 1 D4 $tmp-bumon_name >> $tmp-script
+echo FILLDATA 1 A8 ${datafile}     >> $tmp-script
+echo COPYSTYLE 1 G1 8,1:${datacnttotal},1  >> $tmp-script
+echo COPYSTYLE 1 H1 8,2:${datacnttotal},2  >> $tmp-script
+echo COPYSTYLE 1 I1 8,3:${datacnttotal},3  >> $tmp-script
+echo COPYSTYLE 1 J1 8,4:${datacnttotal},4  >> $tmp-script
+echo COPYSTYLE 1 K1 8,5:${datacnttotal},5  >> $tmp-script
+
+# EXCEL作成
+mkExcel -t${formatd}/UPDATE_FORMAT.xlsx -o$tmp/outfile/${filename}.xlsx -S$tmp-script
+[ $? -eq 0 ] || ERROR_EXIT
+
+mkdir -p ${dwnd}_${usercd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+rm -rf ${dwnd}_${usercd}/${sday}_${usercd}.zip
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo $tmp/outfile/*    |
+tov                    |
+sed 's/\\/\\\\/g'      |
+while read xlsname ; do
+  a=$(nkf -sxLw <(echo $xlsname))
+  [ $? -eq 0 ] || ERROR_EXIT
+
+  b=$(echo $a |awk '{print length($1)-1}')
+  [ $? -eq 0 ] || ERROR_EXIT
+  cp $xlsname ${a:0:$b}
+
+  zip -jgq ${dwnd}_${usercd}/${sday}_${usercd}.zip ${a:0:$b}
+  [ $? -eq 0 ] || ERROR_EXIT
+: ; done
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+excelurl=${expass}_${usercd}/${sday}_${usercd}.zip
+
+echo ${excelurl}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+exit 0

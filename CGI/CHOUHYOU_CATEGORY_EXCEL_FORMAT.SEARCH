@@ -1,0 +1,153 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_CATEGORY_EXCEL_FORMAT.SEARCH>>>カテゴリ別店舗別データ画面EXCEL出力
+# Usage : CHOUHYOU_CATEGORY_EXCEL_FORMAT.SEARCH
+#
+# Written by Tan.zhihui(TRE・CHINA) / Date : 06 Sep 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+formatd=${cgishld}/EXCEL_FORMAT
+sday=$(date +%Y%m%d)
+
+dwnd=/home/trial/AP/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+hostip=$(readvalue -uEXCEL_OUT ${lv4d}/TBL/IP_CONFIG)
+expass=http://${hostip}/~trial/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+# 引数の確認
+[ $# -ne 3 ] && exit 1
+
+# 1.Inputファイル
+tmp=$1-$(basename $0)_$$
+usercd=$2
+paramfile=$3
+
+out_headname=$(awk '$1=="out_1"{print $2}' ${paramfile})       #データヘッダー名（最後の行）
+out_groupheaders=$(awk '$1=="out_3"{print $2}' ${paramfile})   #データヘッダー情報（最後の行以外）
+out_info=$(awk '$1=="out_4"{print $2}' ${paramfile})           #データ明細
+out_mergecell=$(awk '$1=="out_6"{print $2}' ${paramfile})      #データ合弁
+out_color=$(awk '$1=="out_5"{print $2}' ${paramfile})          #バックグラウンド色
+zipname="カテゴリ別"_${sday}_${usercd}.zip
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+mkdir -p ${formatd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+:> $tmp-script
+filename="カテゴリ別"_$(date +%Y%m%d)_$(date +%H%M%S)
+
+mkdir -p $tmp/outfile
+[ $? -eq 0 ] || ERROR_EXIT
+
+headname_colc=$(colc ${out_headname})
+info_rowc=$(rowc ${out_info})
+
+#もしheadname長きだいなり15
+if [ ${headname_colc} -gt 15 ];then
+
+  #表頭週数
+  selcol -c13,${headname_colc} ${out_headname}        >$tmp-out_headname
+  [ $? -eq 0 ] || ERROR_EXIT
+  selcol -c13,${headname_colc} ${out_groupheaders}    | 
+  tail -n +2                                          >$tmp-out_groupheaders
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  #一行以外のデータ
+  cat ${out_info}     |
+  tail -n +2          >$tmp-out_info
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  #出力表データ
+  echo FILLDATA 1 M2 $tmp-out_groupheaders                    >> $tmp-script
+  echo FILLDATA 1 M3 $tmp-out_headname                        >> $tmp-script
+  echo FILLDATA 1 A4 $tmp-out_info                            >> $tmp-script
+
+  #データ合弁
+  tail -n +2 ${out_mergecell}          |
+  kuniq -k1                            |
+  awk 'BEGIN{merge_startrow=4;}{ 
+    print "VMERGECELL 1 "merge_startrow",1:"merge_startrow+4",11";
+    merge_startrow=merge_startrow+5; 
+  }'                                                          >> $tmp-script
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+  #表頭様式
+  echo COPYSTYLE 1 L2 2,14:3,${headname_colc}                 >> $tmp-script
+  #季節列様式
+  echo COPYSTYLE 1 C1 4,5:$[${info_rowc}+4],5                 >> $tmp-script
+  #千分位様式
+  echo COPYSTYLE 1 J1 4,6:$[${info_rowc}+4],7                 >> $tmp-script
+  echo COPYSTYLE 1 J1 4,13:$[${info_rowc}+4],${headname_colc} >> $tmp-script
+  #百分率様式
+  echo COPYSTYLE 1 F1 4,8:$[${info_rowc}+4],11                >> $tmp-script
+
+  #バックグラウンド色様式
+  awk 'BEGIN{str=""}
+   {
+    str="";
+    if($5=="yellow"){
+      str="COPYSTYLE 1 L1 "
+    }else if($5=="red"){
+      str="COPYSTYLE 1 K1 "
+    }
+    print str $1+4","$2+1":"$3+4","$4+1
+  }'   ${out_color} >> $tmp-script
+  [ $? -eq 0 ] || ERROR_EXIT
+fi
+# EXCEL作成
+mkExcel -t${formatd}/KATEGORI_FORMAT.xlsx -o$tmp/outfile/${filename}.xlsx -S$tmp-script
+[ $? -eq 0 ] || ERROR_EXIT
+
+mkdir -p ${dwnd}_${usercd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+rm -rf ${dwnd}_${usercd}/${zipname}
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo $tmp/outfile/*    |
+tov                    |
+sed 's/\\/\\\\/g'      |
+while read xlsname ; do
+  a=$(nkf -sxLw <(echo $xlsname))
+  [ $? -eq 0 ] || ERROR_EXIT
+
+  b=$(echo $a  |awk '{print length($1)-1}')
+  [ $? -eq 0 ] || ERROR_EXIT
+  cp $xlsname ${a:0:$b}
+
+  zip -jgq ${dwnd}_${usercd}/${zipname} ${a:0:$b}
+  [ $? -eq 0 ] || ERROR_EXIT
+: ; done
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+excelurl=${expass}_${usercd}/${zipname}
+
+echo ${excelurl}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+exit 0

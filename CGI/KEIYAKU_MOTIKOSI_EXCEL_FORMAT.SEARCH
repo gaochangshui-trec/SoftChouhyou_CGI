@@ -1,0 +1,120 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_MOTIKOSI_EXCEL_FORMAT.SEARCH >>> 持越し数メンテ画面EXCEL出力
+# Usage : KEIYAKU_MOTIKOSI_EXCEL_FORMAT.SEARCH
+#
+# Written by Zhang.Yunfeng(TRE・CHINA)  /Date : 29 Nov. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+formatd=${cgishld}/EXCEL_FORMAT
+sday=$(date +%Y%m%d)
+
+dwnd=/home/trial/AP/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+hostip=$(readvalue -uEXCEL_OUT ${lv4d}/TBL/IP_CONFIG)
+expass=http://${hostip}/~trial/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+# 引数の確認
+[ $# -ne 4 ] && exit 1
+
+# 1.Inputファイル
+tmp=$1-$(basename $0)_$$
+usercd=$2
+# 1:季節 2:DIV名 3:ライン名 4:部門名 5:ミニ部門名 6:品種名 7:品目名 8:JAN 9:商品名 10 持越し数
+motikosidata=$3
+kikan=$4
+zipname="持越し数出力"_${sday}_${usercd}.zip
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+mkdir -p ${formatd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+#期間
+kisetuname=$(awk '$1=="'${kikan}'"{print $2}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+
+:> $tmp-script
+
+filename="【"${kisetuname}"】持越し数出力"
+
+mkdir -p $tmp/outfile
+[ $? -eq 0 ] || ERROR_EXIT
+
+:> $tmp-script
+data_rowc=$[$(rowc ${motikosidata})+2]
+
+#データ
+echo FILLDATA 1 A3 ${motikosidata}                              >> $tmp-script
+
+#書式ブラシ
+#季節
+echo COPYSTYLE 1 A3 4,1:$data_rowc,1                                     >> $tmp-script
+#階層
+echo COPYSTYLE 1 B3 4,2:$data_rowc,2                                     >> $tmp-script
+echo COPYSTYLE 1 C3 4,3:$data_rowc,3                                     >> $tmp-script
+echo COPYSTYLE 1 D3 4,4:$data_rowc,4                                     >> $tmp-script
+echo COPYSTYLE 1 E3 4,5:$data_rowc,5                                     >> $tmp-script
+echo COPYSTYLE 1 F3 4,6:$data_rowc,6                                     >> $tmp-script
+echo COPYSTYLE 1 G3 4,7:$data_rowc,7                                     >> $tmp-script
+#jancd
+echo COPYSTYLE 1 H3 4,8:$data_rowc,8                                     >> $tmp-script
+echo COPYSTYLE 1 I3 4,9:$data_rowc,9                                     >> $tmp-script
+#持越し数
+echo COPYSTYLE 1 J3 4,10:$data_rowc,10                                   >> $tmp-script
+
+# EXCEL作成
+mkExcel-3.14.3 -t${formatd}/MOTIKOSI_FORMAT.xlsx -o$tmp/outfile/${filename}.xlsx -S$tmp-script
+[ $? -eq 0 ] || ERROR_EXIT
+
+mkdir -p ${dwnd}_${usercd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+rm -rf ${dwnd}_${usercd}/${zipname}
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo $tmp/outfile/*    |
+tov                    |
+sed 's/\\/\\\\/g'      |
+while read xlsname ; do
+  a=$(nkf -sxLw <(echo $xlsname))
+  [ $? -eq 0 ] || ERROR_EXIT
+
+  b=$(echo $a  |awk '{print length($1)-1}')
+  [ $? -eq 0 ] || ERROR_EXIT
+  cp $xlsname ${a:0:$b}
+
+  zip -jgq ${dwnd}_${usercd}/${zipname} ${a:0:$b}
+  [ $? -eq 0 ] || ERROR_EXIT
+: ; done
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+excelurl=${expass}_${usercd}/${zipname}
+
+echo ${excelurl}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+exit 0

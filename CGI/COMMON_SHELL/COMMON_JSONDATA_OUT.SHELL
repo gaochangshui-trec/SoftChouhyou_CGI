@@ -1,0 +1,144 @@
+#!/bin/bash -xv
+#
+# COMMON_JSONDATA_OUT.SHELL >>> JSONデータ表示
+# Usage : COMMON_JSONDATA_OUT.SHELL
+#
+# Written by gao.changshui(TRE・CHINA) /Date :20160422
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+logd=/home/trial/AP/SKCS/LOG
+
+# ディレクトリ定義
+dir=/home/trial
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+# 変数の定義
+# 1.JANリストファイル
+# 引数の確認
+[ $# -eq 1 ] || exit 1
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#処理開始
+# 変数の定義
+
+#データファイルカウント
+paramfile=$1
+
+cat ${paramfile}  |
+# 1.ファイル 2.name 3.type
+insseq            > $tmp-paralist
+# 1.引数番号 2.ファイル 3.name 4.type
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+param_cnt=$(rowc ${paramfile})
+
+:> $tmp-dataAll
+
+seq 1 ${param_cnt} |
+# 1.ファイル番号
+while read num ;do
+  # datafile
+  file_para=$(awk '$1=="'${num}'"{print $2}' $tmp-paralist)
+  objname=$(awk '$1=="'${num}'"{print $3}' $tmp-paralist)
+  datatype=$(awk '$1=="'${num}'"{print $4}' $tmp-paralist)
+
+  if [ ${datatype} == "S" ];then
+    if [ ${num} -eq ${param_cnt} ];then
+      echo '"'${objname}'":"'${file_para}'"' >> $tmp-dataAll
+      [ $? -eq 0 ] || ERROR_EXIT
+    else
+      echo '"'${objname}'":"'${file_para}'",' >> $tmp-dataAll
+      [ $? -eq 0 ] || ERROR_EXIT
+    fi
+    continue
+  else
+    echo "true" > /dev/null
+  fi
+
+  # data is exists
+  if [ -s ${file_para} ];then
+    echo '{"F' > $tmp-template
+    [ $? -eq 0 ] || ERROR_EXIT
+
+    # data 列数
+    datac=$(colc ${file_para})
+    seq 1 ${datac} |
+    # 列番号
+    while read cnum ;do
+      oldtmp=$(cat $tmp-template)
+      if [ ${cnum} -eq ${datac} ];then
+        echo ${oldtmp}${cnum}'":"%'${cnum}'"},'  > $tmp-template
+        [ $? -eq 0 ] || ERROR_EXIT
+      else
+        echo ${oldtmp}${cnum}'":"%'${cnum}'","F' > $tmp-template
+        [ $? -eq 0 ] || ERROR_EXIT
+      fi
+    :;done
+    
+    #データフォーマット作成
+    echo '<!--DATATEMPLATE_'${num}'-->' > $tmp-fomartfile
+    [ $? -eq 0 ] || ERROR_EXIT
+    cat $tmp-template >> $tmp-fomartfile
+    [ $? -eq 0 ] || ERROR_EXIT
+    echo '<!--DATATEMPLATE_'${num}'-->' >> $tmp-fomartfile
+    [ $? -eq 0 ] || ERROR_EXIT
+
+    # データ加工
+    cat ${file_para}                                 |
+    sed 's/\"/\&quot/g'                              |
+    render -i -lDATATEMPLATE_${num} $tmp-fomartfile  > $tmp-outdata
+    [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+    tail -1 $tmp-outdata                    |
+    awk '{print substr($1,1,length($1)-1)}' |
+    cat <(head -n -1 $tmp-outdata) -        > $tmp-outdata_${num}
+    [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+    if [ ${num} -eq ${param_cnt} ];then
+      echo '"'${objname}'":['   |
+      cat - $tmp-outdata_${num}  |
+      cat - <(echo ']')          >> $tmp-dataAll
+      [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+    else
+      echo '"'${objname}'":['   |
+      cat - $tmp-outdata_${num}  |
+      cat - <(echo '],') >> $tmp-dataAll
+      [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+    fi
+  else
+    if [ ${num} -eq ${param_cnt} ];then
+      echo '"'${objname}'":[]'   >> $tmp-dataAll
+      [ $? -eq 0 ] || ERROR_EXIT
+    else
+      echo '"'${objname}'":[],'   >> $tmp-dataAll
+      [ $? -eq 0 ] || ERROR_EXIT
+    fi
+  fi
+:;done
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo "{"           |
+cat - $tmp-dataAll |
+cat - <(echo "}")  |
+toh                |
+sed 's/ //g'       
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-*
+
+exit 0

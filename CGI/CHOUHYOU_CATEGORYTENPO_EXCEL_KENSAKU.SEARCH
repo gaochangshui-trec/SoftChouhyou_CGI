@@ -1,0 +1,448 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_CATEGORYTENPO_EXCEL_KENSAKU.SEARCH>>> カテゴリ店舗別情報検索
+# Usage : CHOUHYOU_CATEGORYTENPO_EXCEL_KENSAKU.SEARCH
+#
+# Written by Tan.zhihui(TRE・CHINA) / Date : 18 Sep. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+act_jand=/home/trial/APDATA/SKCS/POMPA/MASTER
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+# 変数チェック
+[ $# -ne 2 ] && exit 1 
+
+kikan=$1          #期間ID
+paramfile=$2      #パラメータファイル
+
+#入力パラメータ
+kisetutype=$(awk '$1=="in_1"{print $2}' ${paramfile}) #季節ID
+div=$(awk '$1=="in_2"{print $2}' ${paramfile})        #divID
+line=$(awk '$1=="in_3"{print $2}' ${paramfile})       #lineID
+bumon=$(awk '$1=="in_4"{print $2}' ${paramfile})      #部門ID
+gategory=$(awk '$1=="in_5"{print $2}' ${paramfile})   #ミニ部門ID
+siten=$(awk '$1=="in_6"{print $2}' ${paramfile})      #地域
+zone=$(awk '$1=="in_7"{print $2}' ${paramfile})       #ゾーン
+area=$(awk '$1=="in_8"{print $2}' ${paramfile})       #エリア
+ten=$(awk '$1=="in_9"{print $2}' ${paramfile})        #店舗
+
+#出力パラメータ
+out_headname=$(awk '$1=="out_1"{print $2}' ${paramfile})     #データヘッダー名（最後の行）
+out_colname=$(awk '$1=="out_2"{print $2}' ${paramfile})      #データ列名
+out_groupheaders=$(awk '$1=="out_3"{print $2}' ${paramfile}) #データヘッダー情報（最後の行以外）
+out_info=$(awk '$1=="out_4"{print $2}' ${paramfile})         #データ明細
+out_color=$(awk '$1=="out_5"{print $2}' ${paramfile})        #バックグラウンド色
+out_color=$(awk '$1=="out_5"{print $2}' ${paramfile})        #バックグラウンド色
+out_detaildata=$(awk '$1=="out_6"{print $2}' ${paramfile})   #値下げ色用
+#年ID
+year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KILLER/MASTER/COMMON/MST_KIKAN)
+
+#AW/SS取得
+kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KILLER/MASTER/COMMON/MST_KIKAN)
+kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KILLER/MASTER/COMMON/MST_KIKAN)
+
+fixcolnum=13
+datatypecnt=3
+
+#季節マスタ作成
+echo ${kisetuid} |
+hejoin -k3 - ${lv4d}/KILLER/MASTER/COMMON/MST_KISETUTYPE |
+# 1.季節区分ID 2.季節区分名 3.タイプ
+kuniq -k1,2                                              > $tmp-kisetumst
+# 1.季節区分ID 2.季節区分名
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+#有効期間以外の場合、最終週のデータを利用する対応
+echo ${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/${year}*                |
+tov                                                                         |
+awk '$1!="'${lv4d}'/KILLER/MAKE_DATA/'${kisetuname}'/'${year}'/'${year}'*"' > $tmp-filelist
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+if [ -s $tmp-filelist ];then
+  lstfile=$(tail -n1 $tmp-filelist)
+  thisweek=$(basename ${lstfile})
+else
+  exit 0
+fi
+#センター在庫ファイル
+centerzaiko=${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/${thisweek}/CENTER_ZAIKO
+# #1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD  9.センター在庫
+
+#ファイルルート
+base_chouhyo_data=${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/${thisweek}/BASE_CHOUHYO_DATA
+
+if [ ! -s ${base_chouhyo_data} ];then
+  exit 0
+else
+  echo "true" >/dev/null
+fi
+
+#マスタディレクトリー
+masterd=${lv4d}/KILLER/MASTER/${kisetuname}/${year}/
+
+#1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD 9:季節ID 10:週CD      
+#11:今年実績数 12:昨年実績数 13:今年在庫数 14:昨年在庫数 15:計画数 16:登録者 17:参照年売上金額 18:計画年売上金額 19:参照年在庫金額 20:計画年在庫金額
+if [ -s ${kisetutype} ];then
+  hejoin -k9 ${kisetutype} ${base_chouhyo_data} > $tmp-result_one
+  [ $? -eq 0 ] || ERROR_EXIT
+fi
+
+#1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD 9:季節ID 10:週CD      
+#11:今年実績数 12:昨年実績数 13:今年在庫数 14:昨年在庫数 15:計画数 16:登録者 17:参照年売上金額 18:計画年売上金額 19:参照年在庫金額 20:計画年在庫金額
+if [ -s ${gategory} ];then
+  selcol -c1 -c1 -c1 -c1 ${gategory}                        |
+  substr -c1.1.4 -c2.5.4 -c3.9.4 -c4.13.4                   |
+  hejoin -k1,4 - $tmp-result_one                            > $tmp-result_two 
+ [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+elif [ -s ${bumon} ];then
+  selcol -c1 -c1 -c1 ${bumon}                               |
+  substr -c1.1.4 -c2.5.4 -c3.9.4                            |
+  hejoin -k1,3 - $tmp-result_one                            > $tmp-result_two
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+elif [ -s ${line} ];then
+  selcol -c1 -c1 ${line}                                    |
+  substr -c1.1.4 -c2.5.4                                    |
+  hejoin -k1,2 - $tmp-result_one                            > $tmp-result_two
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+elif [ -s ${div} ];then
+  hejoin -k1 ${div} $tmp-result_one                         > $tmp-result_two
+  [ $? -eq 0 ] || ERROR_EXIT
+else
+  cp $tmp-result_one $tmp-result_two
+  [ $? -eq 0 ] || ERROR_EXIT
+fi
+
+#1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD 9:季節ID 10:週CD      
+#11:今年実績数 12:昨年実績数 13:今年在庫数 14:昨年在庫数 15:計画数 16:登録者 17:参照年売上金額 18:計画年売上金額 19:参照年在庫金額 20:計画年在庫金額
+if [ -s ${ten} ];then
+  hejoin -k8 ${ten} $tmp-result_two                           > $tmp-result_three
+  [ $? -eq 0 ] || ERROR_EXIT
+elif [ -s ${area} ];then
+  hejoin -k7 ${area} $tmp-result_two                          > $tmp-result_three
+  [ $? -eq 0 ] || ERROR_EXIT
+elif [ -s ${zone} ];then
+  hejoin -k6 ${zone} $tmp-result_two                          > $tmp-result_three
+  [ $? -eq 0 ] || ERROR_EXIT
+elif [ -s ${siten} ];then
+  hejoin -k5 ${siten} $tmp-result_two                         > $tmp-result_three
+  [ $? -eq 0 ] || ERROR_EXIT
+else
+  cp $tmp-result_two $tmp-result_three
+  [ $? -eq 0 ] || ERROR_EXIT
+fi
+
+#選択のデータによって有効な期間作成
+weekfile=${lv4d}/KILLER/SET_DATA/${kisetuname}/${year}/DIV_LINE_BUMON_CATEGORY_ITEM_WEEK_KEIKAKU
+
+kuniq -k1,4 $tmp-result_three |
+# 1.DIVCD 2.ラインCD 3.部門CD 4.カテゴリCD 
+hejoin -k1,4 - ${weekfile}    |
+# 1.DIVCD 2.ラインCD 3.部門CD 4.カテゴリCD 5.アイテムCD 6.販売開始週 7.販売終了週 8.計画数量
+kuniq -k6,7                   |
+# 1.販売開始週 2.販売終了週
+tov                           |
+kuniq -k1                     > $tmp-weekmst
+# 1.週CD
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+minweek=$(head -n1 $tmp-weekmst)
+maxweek=$(tail -n1 $tmp-weekmst)
+
+awk '$10>="'${minweek}'"&&$10<="'${maxweek}'"' $tmp-result_three > $tmp-result_four
+#1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD 9:季節ID 10:週CD      
+#11:今年実績数 12:昨年実績数 13:今年在庫数 14:昨年在庫数 15:計画数 16:登録者 17:参照年売上金額 18:計画年売上金額 19:参照年在庫金額 20:計画年在庫金額
+[ $? -eq 0 ] || ERROR_EXIT
+
+awk '$10<="'${thisweek}'"' $tmp-result_four > $tmp-result_final
+#1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD 9:季節ID 10:週CD      
+#11:今年実績数 12:昨年実績数 13:今年在庫数 14:昨年在庫数 15:計画数 16:登録者 17:参照年売上金額 18:計画年売上金額 19:参照年在庫金額 20:計画年在庫金額
+[ $? -eq 0 ] || ERROR_EXIT
+
+#週数
+weekcolcnt=$(kuniq -k10 $tmp-result_final|rowc)
+
+if [ ${weekcolcnt} -eq 0 ];then
+  weekcolcnt_new=0
+else
+  weekcolcnt_new=$[datatypecnt*(weekcolcnt+1)]
+  [ $? -eq 0 ] || ERROR_EXIT
+fi
+[ $? -eq 0 ] || ERROR_EXIT
+
+#データ列名
+seq  $[${fixcolnum}+${weekcolcnt_new}] |
+# 1.列ヘッダー
+awk '{print "F"$1}'          |
+# 1.列ヘッダー 
+toh                          > ${out_colname}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat << FIN >> $tmp-headname_str
+DIV 地域 ゾーン エリア 店舗名 実績 目標 昨年 計画比 昨対比 センター在庫 在庫数 消化日数
+FIN
+
+headname_week=$(kuniq -k10 $tmp-result_final|awk '{print substr($1,5,2)*1"週"}') 
+
+#データヘッダー名（最後の行）
+hcat $tmp-headname_str <(echo "実績累計")            |
+hcat - <(echo ${headname_week})                    |
+hcat - <(echo "目標累計")                            |
+hcat - <(echo ${headname_week})                    |
+hcat - <(echo "昨年累計")                            |
+hcat - <(echo ${headname_week})                    >${out_headname}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#もし$tmp-ten_result 空のため
+if [ ! -s $tmp-result_final ];then
+  rm -rf $tmp-* &>/dev/null
+  exit 0
+fi
+[ $? -eq 0 ] || ERROR_EXIT
+
+#週別実績作成
+#1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD 9:季節ID 10:週CD      
+#11:今年実績数 12:昨年実績数 13:今年在庫数 14:昨年在庫数 15:計画数 16:登録者 17:参照年売上金額 18:計画年売上金額 19:参照年在庫金額 20:計画年在庫金額
+selcol -c1 -c5,8 -c10,12 -c15 -c13 $tmp-result_final  |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:週CD 7:今年実績数 8:昨年実績数 9:計画数 10.在庫数
+ssort -k1,6                                      |
+sumup -k1,6 -c7,10                               |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:週CD 7:今年実績数 8:昨年実績数 9:計画数 10.在庫数
+tee $tmp-result_thisweeksum                      |
+selcol -c1,7 -c9 -c8                             |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:週CD 7:今年実績数 8:計画数 9:昨年実績数
+pivot -k1,5                                      |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.A/B/C 7.実績/計画/昨年
+tail -n +2                                       | 
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.A/B/C 7.実績/計画/昨年 ... NF.実績/計画/昨年
+hsum -c7,$[weekcolcnt+6]                         > $tmp-syubetu_data
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.A/B/C 7.実績/計画/昨年 ... NF.実績/計画/昨年累積
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cp $tmp-result_thisweeksum ${out_detaildata}
+
+hejoin -k6 <(echo "A") $tmp-syubetu_data |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.A/B/C 7.実績 ... NF.実績累積
+selcol -c1,5 -cNF -c7,NF-1               > $tmp-jiseki_syubetu
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.実績 8...
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+hejoin -k6 <(echo "B") $tmp-syubetu_data |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.A/B/C 7.実績 ... NF.実績累積
+selcol -c1,5 -cNF -c7,NF-1               > $tmp-plan_syubetu
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.目標 8...
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+hejoin -k6 <(echo "C") $tmp-syubetu_data |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.A/B/C 7.実績 ... NF.実績累積
+selcol -c1,5 -cNF -c7,NF-1               > $tmp-sakuyear_syubetu
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.昨年実績 8...
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#最新在庫取得
+hejoin -k6 <(echo ${thisweek}) $tmp-result_thisweeksum |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:週CD 7:今年実績数 8:昨年実績数 9:計画数 10.在庫数
+selcol -c1,5 -c10                                     > $tmp-zaikoinfo
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.在庫数
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+touchi '@ @ @ @ @ 0' $tmp-zaikoinfo
+centerzaiko=${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/${thisweek}/CENTER_ZAIKO
+# #1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:地域CD 6:ゾーンCD 7:エリアCD 8:店CD  9.センター在庫
+
+#センター在庫取得
+if [ -e ${centerzaiko} ];then
+  delcol -c2,4 ${centerzaiko} |
+  #1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.センター在庫
+  ssort -k1,5                 |
+  sumup -k1,5 -c6             > $tmp-center_zaiko
+  #1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.センター在庫
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  :> $tmp-center_zaiko
+fi
+touchi '@ @ @ @ @ 0' $tmp-center_zaiko
+
+sumup -k1,5 -n -c7,9 $tmp-result_thisweeksum                   |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.件数 7:今年実績数 8:昨年実績数 9:計画数
+hrjoin -i0 -k1,5 $tmp-zaikoinfo                                |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.在庫数 7.件数 8:今年実績数 9:昨年実績数 10:計画数
+hrjoin -i0 -k1,5 $tmp-center_zaiko                             |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.センター在庫 7.在庫数 8.件数 9:今年実績数 10:昨年実績数 11:計画数
+tee $tmp-tebetudata                                            |
+scalc '$[1:5],$9,$11,$10,$9*100/$11,$9*100/$10,$6,$7,$7*$8/$9' |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:今年実績数 7:計画数 8:昨年実績数 9.計画比 10.昨対比 
+# 11.センター在庫 12.在庫数 13.消化日数
+round -tA -c9.0 -c10.0 -c13.0                                  |
+awk '{print $1,$2,$3,$4,$5,$6,$7,$8,$9"%",$10"%",$11,$12,$13}' > $tmp-basedata
+# 1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:今年実績数 7:計画数 8:昨年実績数 9.計画比 10.昨対比 
+# 11.センター在庫 12.在庫数 13.消化日数
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kuniq -k1,5 $tmp-basedata           |
+# 1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 
+hijoin -k1,5 $tmp-sakuyear_syubetu  |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.昨年実績 8...
+hijoin -k1,5 $tmp-plan_syubetu      |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.計画 8... Nx.累積 NF.昨年実績
+hijoin -k1,5 $tmp-jiseki_syubetu    > $tmp-allsyubetu
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.実績 8...
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kuniq -k1,5 $tmp-basedata                                               |
+# 1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 
+hijoin -k1 ${masterd}/MST_DIV_NAME                                      |
+#1:DIVCD 2.DIV名 3:地域CD 4:ゾーンCD 5:エリアCD 6:店CD
+hijoin -k3 ${tbld}/SITEN_NAME -                                         |
+#1:DIVCD 2.DIV名 3:地域CD 4.地域名 5:ゾーンCD 6:エリアCD 7:店CD 
+hijoin -k5 ${tbld}/BLOCK_NAME -                                         |
+#1:DIVCD 2.DIV名 3:地域CD 4.地域名 5:ゾーンCD 6.ゾーン名 7:エリアCD 8:店CD 
+hijoin -k7 ${tbld}/AREA_NAME -                                          |
+#1:DIVCD 2.DIV名 3:地域CD 4.地域名 5:ゾーンCD 6.ゾーン名 7:エリアCD 8.エリア名　9:店CD 
+hijoin -k9 ${tbld}/TEN_NAME -                                           |
+#1:DIVCD 2.DIV名 3:地域CD 4.地域名 5:ゾーンCD 6.ゾーン名 7:エリアCD 8.エリア名　9:店CD 10.店名 
+awk '{print $1,$3,$5,$7,$9,1*$1":"$2,1*$3":"$4,1*$5":"$6,\
+     1*$7":"$8,1*$9":"$10}'                                             > $tmp-groupname
+#1:DIVCD 2:地域CD 43ゾーンCD 4:エリアCD 5:店CD 6:DIV名 7:地域名 8:ゾーン名 9:エリア名 10:店名
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#データ合弁
+hijoin -k1,5 $tmp-basedata $tmp-allsyubetu |
+# 1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:今年実績数 7:計画数 8:昨年実績数 9.計画比 10.昨対比 
+# 11.センター在庫 12.在庫数 13.消化日数 14.累積 15.実績 16...
+hijoin -k1,5 $tmp-groupname                |
+# 1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:DIV名 7:地域名 8:ゾーン名 9:エリア名 10:店名 
+# 11:今年実績数 12:計画数 13:昨年実績数 14.計画比 15.昨対比 
+# 16.センター在庫 17.在庫数 18.消化日数 19.累積 20.実績 21...
+delcol -c1,5                               |
+# 1:DIV名 2:地域名 3:ゾーン名 4:エリア名 5:店名 6:今年実績数 7:計画数 8:昨年実績数 9.計画比 10.昨対比 
+# 11.センター在庫 12.在庫数 13.消化日数 14.累積 15.実績 16...
+cat ${out_colname} -                       > ${out_info}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#合計データ作成
+cat << FIN >> $tmp-line
+- - - -
+FIN
+
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.センター在庫 7.在庫数 8.件数 9:今年実績数 10:昨年実績数 11:計画数
+scalc '$2,$[6:7],$[9:11],$9/$8' $tmp-tebetudata |
+#1:地域CD 2.センター在庫 3.在庫数 4:今年実績数 5:昨年実績数 6:計画数 7.平均売数
+ssort -k1                                       |
+sumup -k1 -c2,7                                 |
+#1:地域CD 2.センター在庫 3.在庫数 4:今年実績数 5:昨年実績数 6:計画数 7.平均売数
+scalc '$1,$4,$6,$5,$4*100/$6,$4*100/$5,$2,$3,$3/$7' |
+# 1:地域CD 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数
+round -tA -c5.0 -c6.0 -c9.0                         |
+awk '{print $1,$2,$3,$4,$5"%",$6"%",$7,$8,$9}'      > $tmp-sysyabetu_sum
+# 1:地域CD 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+# 合計データ計算
+scalc '0000,$[6:7],$[9:11],$9/$8' $tmp-tebetudata   |
+#1:地域CD 2.センター在庫 3.在庫数 4:今年実績数 5:昨年実績数 6:計画数 7.平均売数
+ssort -k1                                           |
+sumup -k1 -c2,7                                     |
+#1:地域CD 2.センター在庫 3.在庫数 4:今年実績数 5:昨年実績数 6:計画数 7.平均売数
+scalc '$1,$4,$6,$5,$4*100/$6,$4*100/$5,$2,$3,$3/$7' |
+# 1:地域CD 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数
+round -tA -c5.0 -c6.0 -c9.0                         |
+awk '{print $1,$2,$3,$4,$5"%",$6"%",$7,$8,$9}'      |
+# 1:地域CD 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数
+cat - $tmp-sysyabetu_sum                            > $tmp-total_sum
+# 1:地域CD 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#週別支社別
+ssort -k2 $tmp-allsyubetu |
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6.累積 7.実績 8...
+sumup -k2 -c6,NF          > $tmp-sisyaweek_sum
+#1:地域CD 2.累積 3.実績 4...
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#地域マスタ加工
+echo "0000 合計"          |
+cat - ${tbld}/SITEN_NAME > $tmp-sisya_mst
+# 1.支社CD 2.支社名 
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+sumup -c6,NF $tmp-allsyubetu |
+#1.累積 2.実績 3...
+crossjoin <(echo 0000) -    |
+#1:地域CD 2.累積 3.実績 4...
+cat - $tmp-sisyaweek_sum    |
+#1:地域CD 2.累積 3.実績 4...
+hijoin -k1 $tmp-total_sum - |
+# 1:地域CD 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数 10.累積 11.実績 12...
+hijoin -k1 $tmp-sisya_mst   |
+# 1:地域CD 2.地域名 3:今年実績数 4:計画数 5:昨年実績数 6.計画比 7.昨対比 
+# 8.センター在庫 9.在庫数 10.消化日数 11.累積 12.実績 13...
+delcol -c1                  |
+# 1:地域名 2:今年実績数 3:計画数 4:昨年実績数 5.計画比 6.昨対比 
+# 7.センター在庫 8.在庫数 9.消化日数 10.累積 11.実績 12...
+crossjoin $tmp-line -       |
+# 1:DIV名 2:ゾーン名 3:エリア名 4:店名 5:地域名 6:今年実績数 7:計画数 8:昨年実績数 9.計画比 
+# 10.昨対比 11.センター在庫 12.在庫数 13.消化日数 14.累積 15.実績 16...
+cat ${out_colname} -        > ${out_groupheaders}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#色対応
+#データ件数
+color_rowcnt=$[$(rowc ${out_info})-2]
+
+jiseki_startcol=${fixcolnum} #実績開始列
+jiseki_endcol=$[jiseki_startcol + weekcolcnt] #実績終了列
+
+planqty_startcol=$[jiseki_endcol + 1] #計画数開始列
+planqty_endcol=$[planqty_startcol + weekcolcnt] #計画数終了列
+
+sakuyear_startcol=$[planqty_endcol + 1] #昨年実績開始列
+sakuyear_endcol=$[sakuyear_startcol + weekcolcnt] #昨年実績終了列
+
+jiseki_color="#FFF2CC"   # 実績カラー
+planqty_color="#FFE699"  # 計画数カラー
+sakuyear_color="#A9D08E" # 昨年計画数
+
+echo 0 ${jiseki_startcol} ${color_rowcnt} ${jiseki_endcol} ${jiseki_color} > $tmp-colorfile
+echo 0 ${planqty_startcol} ${color_rowcnt} ${planqty_endcol} ${planqty_color} >> $tmp-colorfile
+echo 0 ${sakuyear_startcol} ${color_rowcnt} ${sakuyear_endcol} ${sakuyear_color} >> $tmp-colorfile
+
+cat $tmp-colorfile >> ${out_color}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+
+exit 0

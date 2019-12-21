@@ -1,0 +1,123 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_CATEGORY_EXCEL_COLOR_KENSAKU.SEARCH >>>カテゴリ店舗別 カラー計算
+# Usage : CHOUHYOU_CATEGORY_EXCEL_COLOR_KENSAKU.SEARCH
+#
+# Written by Tan.zhihui(TRE・CHINA) / Date : 18 Sep. 2019
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  echo '{"error":"1"}'
+  exit 1
+}
+
+# パラメータ定義
+[ $# -ne 1 ] && exit 1
+
+paramfile=$1
+out_colorfile=$(awk '$1=="out_5"{print $2}' ${paramfile})      #バックグラウンド色
+in_datafile=$(awk '$1=="out_7"{print $2}' ${paramfile})        #明細データファイル
+
+# ${in_datafile}
+#1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID 6:週CD 
+#7:今年実績数 8:計画数 9:昨年実績数 10:今年在庫数 11:昨年在庫数
+
+start_col=12                            #開始列
+datypecnt=5                             #データ種類個数
+start_loop_num=$[start_col+datypecnt-1] #処理開始列
+
+#カラー対応
+bg_color="yellow"
+
+#週のデータ個数によってデータ作成
+kuniq -k6 ${in_datafile}     |
+# 1.週CD
+insseq                       |
+# 1.順番 2.週CD
+scalc '$2,$1-1+'${start_col} > $tmp-weeknum
+# 1.週CD　2.終了列番号
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+:> $tmp-sum5data
+
+awk '$2>="'${start_loop_num}'"' $tmp-weeknum |
+# 1.終了週CD　2.終了列番号
+while read endweek endcol;do
+  stweek=$(awk '$2=="'$[endcol-4]'"{print $1}' $tmp-weeknum) #開始週CD
+  stcol=$[endcol-4] #開始列番号
+  #5週間リスト作成
+  sdate -e ${stweek}w ${endweek}w |
+  tov                             > $tmp-week5cntlst
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  
+  #5週間累積データ作成
+  hejoin -k6 $tmp-week5cntlst ${in_datafile} |
+  #1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID 6:週CD 
+  #7:今年実績数 8:計画数 9:昨年実績数 10:今年在庫数 11:昨年在庫数
+  sumup -k1,5 -c7,11                         |
+  #1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID
+  #6:今年実績数 7:計画数 8:昨年実績数 9:今年在庫数 10:昨年在庫数
+  crossjoin - <(echo ${stcol})               >> $tmp-sum5data
+  #1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID
+  #6:今年実績数 7:計画数 8:昨年実績数 9:今年在庫数 10:昨年在庫数 11.開始列番号
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  
+:; done
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#最終のデータ作成
+:> $tmp-result_data
+
+#データ種類によってループする
+seq 1 ${datypecnt} |
+# 1.データ種類番号(1/5)
+scalc '$1-1'       |
+# 1.データ種類番号(0/4)
+while read colnum;do
+  #行番号計算
+  LANG=C sort -k1,5 -k$[colnum+6],$[colnum+6]n -k11,11nr $tmp-sum5data |
+  #1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID
+  #6:今年実績数 7:計画数 8:昨年実績数 9:今年在庫数 10:昨年在庫数 11.開始列番号
+  lstrow -k1,5                                                         |
+  #1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID
+  #6:今年実績数 7:計画数 8:昨年実績数 9:今年在庫数 10:昨年在庫数 11.開始列番号
+  selcol -c11                                                          |
+  #1.開始列番号
+  insseq                                                               |
+  # 1.順番 2.開始列番号
+  scalc '($1-1)*'${datypecnt}' + '${colnum}',$2'                       |
+  # 1.行番号 2.開始列
+  awk '{print $1,$2,$1,$2+4,"'${bg_color}'"}'                          >>$tmp-result_data
+  # 1.開始行 2.開始列 3.終了行 4.終了列 5.カラー
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+:; done
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat $tmp-result_data > ${out_colorfile}
+[ $? -eq 0 ] || ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-*
+
+exit 0

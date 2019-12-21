@@ -1,0 +1,131 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_ZAIKO_URE_KENSAKU.SEARCH >>> 在庫売上
+# Usage : CHOUHYOU_ZAIKO_URE_KENSAKU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 21 Dec. 2018
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+shld=/home/trial/AP/SOFT_CHOUHYOU/CGI
+
+ured=${pompad}/URE
+zaikod=${pompad}/ZAIKO
+
+# 変数チェック
+[ $# -ne 1 ] && exit 1 
+
+thisyear=$1
+lastyear=$[${thisyear}-1]                         
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+mkdir -p ${pompad}/KILLER_SS/${thisyear}
+mkdir -p ${pompad}/KILLER_AW/${thisyear}
+mkdir -p ${pompad}/KILLER_YEAR/${thisyear}
+
+touch ${pompad}/KILLER_SS/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN
+touch ${pompad}/KILLER_AW/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN
+touch ${pompad}/KILLER_YEAR/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN
+
+touch ${pompad}/KILLER_SS/${thisyear}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU
+touch ${pompad}/KILLER_AW/${thisyear}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU
+touch ${pompad}/KILLER_YEAR/${thisyear}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+cat ${pompad}/KILLER_SS/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN ${pompad}/KILLER_AW/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN |
+# 1.DIV 2.CATEGORY 3.ITEM 4.計画年 5.JAN
+cat - ${pompad}/KILLER_YEAR/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN   |
+# 1.DIV 2.CATEGORY 3.ITEM 4.計画年 5.JAN
+selrow -e '$4>='${lastyear}                 |
+kuniq -k5                                   > $tmp-alljan
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+cat ${pompad}/KILLER_SS/TEN_LIST ${pompad}/KILLER_AW/TEN_LIST ${pompad}/KILLER_YEAR/TEN_LIST |
+# 1:TENCD
+kuniq -k1     >$tmp-tenlist
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#売上データ抽出
+echo ${ured}/SYUBETU/*                                    |
+tr ' ' '\n'                                               |
+awk '{print $1,substr($1,length($1)-9,4)}'                |
+# 1:ファイル 2:年
+awk '$2>="'${lastyear}'"{print $1}'                       > $tmp-ure_weekfile
+# 1:ファイル
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+if [ -s $tmp-ure_weekfile ];then
+  xldec -l $tmp-alljan $tmp-ure_weekfile                  |
+  # 1:JAN 2:拠点CD 3:売上週 4:原価額 5:売上数量 6:売上金額 7:売上税抜金額
+  selcol -c1,3 -c5,6                                      |
+  # 1:JAN 2:拠点CD 3:売上週 4:売上数量 5:売上金額
+  hejoin -k2 $tmp-tenlist                                 > $tmp-ure_jan_ten_week
+  # 1:JAN 2:拠点CD 3:売上週 4:売上数量 5:売上金額
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  :> ${pompad}/DATA/URE/JAN_TEN_WEEK
+fi
+
+#在庫データ抽出
+echo ${zaikod}/SYUBETU/*                                  |
+tr ' ' '\n'                                               |
+awk '{print $1,substr($1,length($1)-9,4)}'                |
+# 1:ファイル 2:年
+awk '$2>="'${lastyear}'"{print $1}'                       > $tmp-zaiko_weekfile
+# 1:ファイル
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+if [ -s $tmp-zaiko_weekfile ];then
+   xldec -l $tmp-alljan $tmp-zaiko_weekfile                 |
+   # 1:JAN 2:拠点CD 3:在庫日 4:週CD 5:在庫数量 6.在庫金額
+   selcol -c1,2 -c4,6                                       |
+   # 1:JAN 2:拠点CD 3:週CD 4:在庫数量 5.在庫金額
+   hejoin -k2 $tmp-tenlist                                  >$tmp-zaiko_jan_ten_week 
+   # 1:JAN 2:拠点CD 3:週CD 4:在庫数量 5.在庫金額
+   [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+   :> ${pompad}/DATA/ZAIKO/JAN_TEN_WEEK
+fi
+
+shl=CHOUHYOU_ZAIKO_URE_KISETUTYPE_KENSAKU.SEARCH
+echo AW SS YEAR |
+tov             |
+awk '{print "'${thisyear}'",$1,"'$tmp'-ure_jan_ten_week","'$tmp'-zaiko_jan_ten_week"}'  |
+sparallel -n3 ${shld}/${shl}:%1%2%3%4         > $tmp-result
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+[ $(awk '$5=="ERROR"' $tmp-result | rowc) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+
+exit 0

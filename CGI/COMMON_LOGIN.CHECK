@@ -1,0 +1,42 @@
+#!/bin/bash -xv
+#
+# COMMON_LOGIN.CHECK >>> MDPLANログイン
+# Usage : COMMON_LOGIN.CHECK
+#
+# Written by Chou.Shin(TRE・CHINA) / Date : 22 Aug. 2016
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+# ディレクトリ定義
+dir=/home/trial
+shld=${dir}/AP/SKCS/CGI
+url="http://192.168.1.49/TRIAL/EntInfo/LoginData/LoginIndex.aspx"
+
+# 引数チェック
+[ $# -eq 2 ] || exit 1
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+userid=$1
+password=$2
+
+[ -z ${userid} ] && ERROR_EXIT
+[ -z ${password} ] && ERROR_EXIT
+isSuccess=$(curl -G ${url} -d "EmployeeCD1="$userid"&EmployeePassword1="$password | grep "1" | rowc )
+echo ${isSuccess}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+exit 0
+ 

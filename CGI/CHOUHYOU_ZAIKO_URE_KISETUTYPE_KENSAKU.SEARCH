@@ -1,0 +1,164 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_ZAIKO_URE_KISETUTYPE_KENSAKU.SEARCH >>> 在庫売上
+# Usage : CHOUHYOU_ZAIKO_URE_KISETUTYPE_KENSAKU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 21 Dec. 2018
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+ured=${pompad}/URE
+zaikod=${pompad}/ZAIKO
+
+# 変数チェック
+[ $# -ne 4 ] && exit 1 
+
+thisyear=$1
+lastyear=$[${thisyear}-1]                         
+flg=$2
+ure_jan_ten_week=$3
+zaiko_jan_ten_week=$4
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+mkdir -p ${pompad}/KILLER_${flg}/${thisyear}
+touch ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN
+touch ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+mkdir -p ${pompad}/KILLER_${flg}/DATA/URE
+mkdir -p ${pompad}/KILLER_${flg}/DATA/ZAIKO
+
+#AWカテゴリ別売れ数抽出
+cat ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN          |
+# 1.DIV 2.CATEGORY 3.ITEM 4.計画年 5.JAN
+selrow -e '$4>='${lastyear}                                                 |
+# 1.DIV 2.CATEGORY 3.ITEM 4.計画年 5.JAN
+kuniq -k1,2@4                      	                                    |
+# 1.DIV 2.CATEGORY 3.計画年
+while read div kate planyear ; do
+  #計画数を使う、昨年売れ数作成
+  if [ ${planyear} -eq ${lastyear} -a -s ${pompad}/KILLER_${flg}/DATA/KATEGORI_TEMA/${kate} ];then
+    #カテゴリ週
+    echo ${div} ${kate}                                             |
+    # 1:DIVCD 2:カテゴリCD
+    hejoin -k1,2 - ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_WEEK_KEIKAKU |
+    # 1:DIVCD 2:カテゴリCD 3:アイテムCD 4:販売開始週 5:販売終了週 6:計画
+    selcol -c4,5 | tov | kuniq -k1                                  > $tmp-weeklist
+    # 1.週リスト                                        
+    [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+    stweek=$(head -n1 $tmp-weeklist)
+    edweek=$(tail -n1 $tmp-weeklist)
+    sdate -e ${stweek}w ${edweek}w |
+    tov                            |
+    # 1.週リスト
+    awk '{print (substr($1,1,4)-1)substr($1,5,2)}' |
+    insseq                         > $tmp-kateweek
+    # 1.番号 2.週
+    [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+    # 予測週
+    kuniq -k3 ${pompad}/KILLER_${flg}/DATA/KATEGORI_TEMA/${kate} |
+    # 1.週CD
+    insseq                                                 |
+    # 1.番号 2.週(予測)
+    hijoin -k1 $tmp-kateweek                               |
+    # 1.番号 2.週(カテゴリ) 3.週(予測)
+    kuniq -k3@2                                            > $tmp-week
+    # 1.週(予測) 2.週(カテゴリ) 
+    [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+    hejoin -k2 ${pompad}/KILLER_${flg}/TEN_LIST ${pompad}/KILLER_${flg}/DATA/KATEGORI_TEMA/${kate} |
+    # 1.テーマID 2.店CD 3.週CD 4.売れ数 5.予測金額
+    hijoin -k3 $tmp-week                                                                 |
+    # 1.テーマID 2.店CD 3.週CD 4.週(カテゴリ) 5.売れ数 6.予測金額
+    selcol -c2 -c4,6                                                                     |
+    # 1.店CD 2.週CD 3.売れ数 4.予測金額
+    crossjoin <(echo${div} ${kate}) - > ${pompad}/KILLER_${flg}/DATA/URE/${div}_${kate}_${planyear}
+    # 1.DIV 2.CATEGORY 3.拠点CD 4.売上週 5.カテゴリ別売上数量 6.カテゴリ別売上金額
+    [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  else
+    delcol -c3 ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN |
+    # 1.DIV 2.CATEGORY 3.計画年 4.JAN
+    hejoin -k1,3 <(echo ${div} ${kate} ${planyear})           |
+    # 1.DIV 2.CATEGORY 3.計画年 4.JAN
+    selcol -c4 -c1,3                                          |
+    # 1.JAN 2.DIV 3.CATEGORY 4.計画年
+    ssort -k1                                                 |
+    hijoin -k1 - ${ure_jan_ten_week}                        |
+    # 1.JAN 2:DIV 3.CATEGORY 4.計画年 5.拠点CD 6:売上週 7:売上数量 8:売上金額
+    hejoin -k5 ${pompad}/KILLER_${flg}/TEN_LIST              |
+    # 1.JAN 2:DIV 3.CATEGORY 4.計画年 5.拠点CD 6:売上週 7:売上数量 8:売上金額
+    delcol -c1                                                |
+    # 1:DIV 2:CATEGORY 3:計画年 4:拠点CD 5:売上週 6:売上数量 7:売上金額
+    selcol -c1,2 -c4,7 -c3                                    |
+    # 1.DIV 2.CATEGORY 3.拠点CD 4.売上週 5.売上数量 6.売上金額 7.計画年
+    ssort -k1,4                                               |
+    sumup -k1,4 -c5,6                                         > ${pompad}/KILLER_${flg}/DATA/URE/${div}_${kate}_${planyear}
+    # 1.DIV 2.CATEGORY 3.拠点CD 4.売上週 5.カテゴリ別売上数量 6.カテゴリ別売上金額
+    [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  fi
+:;done
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#カテゴリ別在庫数抽出
+cat ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN |
+# 1.DIV 2.CATEGORY 3.ITEM 4.計画年 5.JAN
+selrow -e '$4>='${lastyear}                                        |
+# 1.DIV 2.CATEGORY 3.ITEM 4.計画年 5.JAN
+kuniq -k1,2@4                                                      |
+# 1.DIV 2.CATEGORY 3.計画年
+while read div kate planyear ; do
+  delcol -c3  ${pompad}/KILLER_${flg}/${thisyear}/DIV_CATEGORY_ITEM_YEAR_JAN  |
+  # 1.DIV 2.CATEGORY 3.計画年 4.JAN
+  hejoin -k1,3 <(echo ${div} ${kate} ${planyear})         |
+  # 1.DIV 2.CATEGORY 3.計画年 4.JAN
+  selcol -c4 -c1,3                                        |
+  # 1.JAN 2.DIV 3.CATEGORY 4.計画年
+  ssort -k1                                               |
+  hijoin -k1 - ${zaiko_jan_ten_week}                      |
+  # 1:JAN 2:DIV 3:CATEGORY 4:計画年 5:拠点CD 6:週CD 7:在庫数量 8.在庫金額 
+  hejoin -k5 ${pompad}/KILLER_${flg}/TEN_LIST             |
+  # 1.JAN 2:DIV 3:CATEGORY 4:計画年 5:拠点CD 6:週CD 7:在庫数量 8.在庫金額 
+  selcol -c2,3 -c5,8                                      |
+  # 1.DIV 2.CATEGORY 3.拠点CD 4.週CD 5.在庫数量 6.在庫金額 
+  ssort -k1,4                                             |
+  sumup -k1,4 -c5,6                                       > ${pompad}/KILLER_${flg}/DATA/ZAIKO/${div}_${kate}_${planyear}
+  # 1.DIV 2.CATEGORY 3.拠点CD 4.週CD  5.在庫数量 6.在庫金額
+:;done
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+
+exit 0

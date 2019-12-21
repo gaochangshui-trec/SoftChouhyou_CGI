@@ -1,0 +1,89 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_KILLER_INPUT_KENSAKU.SEARCH >>> キラー入力パラメータ加工
+# Usage : CHOUHYOU_KILLER_INPUT_KENSAKU.SEARCH 
+#
+# Written by Tan.zhihui(TRE・CHINA) / Date : 11 Sep. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+act_jand=/home/trial/APDATA/SKCS/POMPA/MASTER
+[ $# -eq 3 ] || ERROR_EXIT
+
+# パラメータ定義
+paramfile=$1
+outfile=$2
+filecnt=$3
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  echo '{"error":"1"}'
+  exit 1
+}
+
+#共通関数
+SEARCH_PARAM(){
+  keyid=$1       #検索ID
+  
+  grep ${keyid} ${paramfile}   |
+  kuniq -k2                    |
+  sed  's/,/ /g'               |
+  tov                          > $tmp-result_one                              
+  [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+  
+  if [ $(rowc $tmp-result_one) -eq 1 -a $(selcol -c1 $tmp-result_one) == "_" ];then
+    :> $tmp-resultfile
+  else
+    if [ ${keyid} == "KISETUTYPE" ];then
+      fmtfixed -w2 -c1 $tmp-result_one > $tmp-resultfile
+      [ $? -eq 0 ] || ERROR_EXIT
+    elif [ ${keyid} == "LOGINUSER" ];then
+      fmtfixed -w10 -c1 $tmp-result_one > $tmp-resultfile
+      [ $? -eq 0 ] || ERROR_EXIT
+    else 
+      fmtfixed -w4 -c1 $tmp-result_one > $tmp-resultfile
+      [ $? -eq 0 ] || ERROR_EXIT
+    fi
+  fi
+  
+  cat $tmp-resultfile
+}
+
+#季節区分情報
+kisetutype=$(readvalue -uKISETUTYPE ${paramfile})
+[ -z ${kisetutype} ] && ERROR_EXIT
+echo ${kisetutype} > ${out_kisetufile}
+
+# 1.番号 2.ファイル 3.keyid 
+awk '$1<='${filecnt}'{print $3,$2}' ${outfile} |
+# 1.keyid 2.ファイル
+while read keyid outfile; do
+  SEARCH_PARAM ${keyid} > ${outfile}
+  [ $? -eq 0 ] || ERROR_EXIT
+:; done
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-*
+
+exit 0

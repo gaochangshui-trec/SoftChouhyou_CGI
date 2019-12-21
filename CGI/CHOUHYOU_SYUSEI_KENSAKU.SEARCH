@@ -1,0 +1,123 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_SYUSEI_KENSAKU.SEARCH >>>修正データ抽出
+# Usage : CHOUHYOU_SYUSEI_KENSAKU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 10 Jan. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの年盗
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+#走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+killerd=${pompad}/KILLER
+masterd=${killerd}/MASTER
+tbld=/SKCWEB/TBL
+
+# 変数チェック
+[ $# -ne 7 ] && exit 1 
+
+mode=$1            #AW/SS区別
+year=$2            #YEAR
+div=$3             #ディビジョン
+category=$4        #カテゴリ
+alldata=$5
+#week_date=$6
+line=$6
+bumon=$7
+
+lastyear=$[year-1]
+
+if [ ${mode} == "SS" ] ; then
+  datad=${masterd}/SS
+  setd=${killerd}/SET_DATA/SS
+else
+  datad=${masterd}/AW
+  setd=${killerd}/SET_DATA/AW
+fi
+
+mkdir -p ${setd}/${year}
+
+#touch ${setd}/${year}/DIV_LINE_BUMON_CATEGORY_ITEM_YEAR_JAN_PLANQTY
+#touch ${setd}/${year}/DIV_LINE_BUMON_CATEGORY_ITEM_WEEK_KEIKAKU
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+#商品データ抽出
+cat ${setd}/${year}/DIV_LINE_BUMON_CATEGORY_ITEM_YEAR_JAN_PLANQTY      |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数 9:登録者 10:登録日時 11:更新者 12:更新日時
+hejoin -k1 <(echo ${div})                                              |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数 9:登録者 10:登録日時 11:更新者 12:更新日時
+hejoin -k4 <(echo ${category})                                         |
+hejoin -k6 <(echo ${year})                                             |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数 9:登録者 10:登録日時 11:更新者 12:更新日時
+selcol -c1,8                                                            >$tmp-thisyear_data
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+hejoin -k1 <(echo ${div}) ${setd}/${year}/DIV_LINE_BUMON_CATEGORY_ITEM_YEAR_JAN_PLANQTY |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数 9:登録者 10:登録日時 11:更新者 12:更新日時
+hejoin -k4 <(echo ${category})                                            |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数 9:登録者 10:登録日時 11:更新者 12:更新日時
+hejoin -k6 <(echo ${lastyear})                                            |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数 9:登録者 10:登録日時 11:更新者 12:更新日時
+selcol -c1,8                                                              |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 7:JAN
+crossjoin - <(echo "@@@@@@@")                                             |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:計画数
+cat - $tmp-thisyear_data                                                  |
+hrjoin -i_ -k7 ${tbld}/JAN_NAME                                           |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:年 
+# 7:JAN 8:商品名 9:計画数
+hrjoin -i_ -k1,5 ${datad}/${year}/MST_DIV_LINE_BUMON_CATEGORI_ITEM_NAME   |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD
+# 6:アイテム名 7:年 8:JAN 9:商品名 10:計画数
+awk '{print $7=="'${year}'"?"今年":"昨年",$6,$8,$9,$10}'                  |
+# 1:年 2:アイテム名 3:JAN 4:商品名 5:計画数
+ssort -k1                                                                 |
+fmtfloat -c3                                                              |
+# 1:年 2:アイテム名 3:JAN 4:商品名 5:計画数
+cat <(echo "F1 F2 F3 F4 F5") -                                            >${alldata}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#hejoin -k1,4 <(echo ${div} ${line} ${bumon} ${category}) ${setd}/${year}/DIV_LINE_BUMON_CATEGORY_ITEM_WEEK_KEIKAKU   |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:アイテムCD 6:販売開始週 7:販売終了週 8:計画数
+#groupby -k1,4 -c6.MIN -c7.MAX                                  >${week_date}
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:販売開始週 6:販売終了週
+#[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+rm -rf $tmp-*
+
+exit 0

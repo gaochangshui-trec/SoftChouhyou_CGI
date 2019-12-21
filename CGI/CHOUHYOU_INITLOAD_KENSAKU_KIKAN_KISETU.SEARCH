@@ -1,0 +1,90 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_INITLOAD_KENSAKU_KIKAN_KISETU.SEARCH >>> 帳票区分
+# Usage : CHOUHYOU_INITLOAD_KENSAKU_KIKAN_KISETU.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 31 July. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+dir=/home/trial
+lockd=${dir}/APDATA/SOFT_CHOUHYOU/LOCK
+
+# 変数チェック
+[ $# -ne 3 ] && exit 1 
+
+chouhyoutype=$1
+kikan=$2
+kisetutype=$3
+
+ERROR_EXIT(){
+  exit 1
+}
+
+year=$(date +%Y)
+
+if [ ${chouhyoutype} == "KISETU" ];then
+  kuniq -k2 ${lv4d}/KISETU/MASTER/COMMON/MST_KISETU_UREZAIKO_KIKAN |
+  hejoin -k2 - ${lv4d}/${chouhyoutype}/MASTER/COMMON/MST_KIKAN     |
+  # 1:期間ID 2:期間名 3:年 4:季節タイプ
+  ssort -k1                                                        |
+  tail -n1                                                         > $tmp-maxidfile
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+  maxid=$(selcol -c1 $tmp-maxidfile)
+else
+  cat ${lv4d}/${chouhyoutype}/MASTER/COMMON/MST_KIKAN     |
+  # 1:期間ID 2:期間名 3:年 4:季節タイプ
+  awk '$3<="'${year}'"'                                   | 
+  ssort -k1                                               |
+  tail -n1                                                > $tmp-maxidfile
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+  maxid=$(selcol -c1 $tmp-maxidfile)
+fi
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+cat ${lv4d}/${chouhyoutype}/MASTER/COMMON/MST_KIKAN   |
+# 1:期間ID 2:期間名 3:年 4:季節タイプ
+awk '$1<="'${maxid}'"'                                | 
+ssort -k1                                             |
+cat <(echo F1 F2 F3 F4) -                             >${kikan}
+# 1:期間ID 2:期間名 3:年 4:季節タイプ
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat ${lv4d}/${chouhyoutype}/MASTER/COMMON/MST_KISETUTYPE |
+# 1:季節区分ID 2:季節区分名 3:季節がイプ  
+ssort -k1                                                  |
+cat <(echo F1 F2 F3) -                                     >${kisetutype}
+# 1:季節区分ID 2:季節区分名 3:季節がイプ
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+
+exit 0

@@ -1,0 +1,149 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_INITLOAD_KENSAKU_TENKAISO.SEARCH >>> 店舗階層情報表示
+# Usage : CHOUHYOU_INITLOAD_KENSAKU_TENKAISO.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 29 July. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+ured=${pompad}/URE
+zaikod=${pompad}/ZAIKO
+tbld=/SKCWEB/TBL
+# 変数チェック
+[ $# -ne 7 ] && exit 1 
+
+siten=$1
+block=$2
+area=$3
+ten=$4
+block_siten=$5
+area_block=$6
+ten_area=$7
+
+ERROR_EXIT(){
+  exit 1
+
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+cat ${tbld}/TEN_NAME             |
+# 1:店舗CD 2:店舗名    
+hijoin -k1 ${tbld}/TEN_HEITENFLG |
+# 1:店舗CD 2:閉店flg 3:店舗名
+hejoin -k2 <(echo 0)             |
+# 1:店舗CD 2:閉店flg 3:店舗名 
+hijoin -k1 ${tbld}/TEN_TENTYPE   |
+# 1:店舗CD 2:TENTYPE 3:閉店flg 4:店舗名
+hejoin -k2 <(echo 0001)          |
+# 1:店舗CD 2:TENTYPE 3:閉店flg 4:店舗名
+kuniq -k1@4                      |
+# 1:店舗CD 2:店舗名
+tee $tmp-ten_file                |
+fmtfloat -c1                     |
+# 1:店舗CD 2:店舗名
+awk '{print $1,$1":"$2}'         |
+# 1:店舗CD 2:店舗名
+cat <(echo id text) -           >${ten}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat ${tbld}/TEN_AREA             |
+# 1:店舗CD 2:エリアCD           
+hejoin -k1 $tmp-ten_file         |
+# 1:店舗CD 2:エリアCD
+tee $tmp-ten_are                 |
+fmtfloat -c1,2                   |
+cat <(echo ten area) -           >${ten_area}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+hijoin -k2 ${tbld}/AREA_NAME $tmp-ten_are |
+# 1:店舗CD 2:エリアCD 3.エリア名
+kuniq -k2,3                      |
+# 1:エリアCD 2:エリア名
+fmtfloat -c1                     |
+# 1:エリアCD 2:エリア名
+awk '{print $1,$1":"$2}'         |
+cat <(echo id text) -            >${area}         
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat ${tbld}/TEN_BLOCK            |
+# 1:店舗CD 2:BLOCKCD         
+hijoin -k1 $tmp-ten_are          |
+# 1:店舗CD 2:エリアCD 3:BLOCKCD
+kuniq -k2,3                      |
+# 1:エリアCD  2:BLOCKCD
+tee $tmp-area_block              |
+fmtfloat -c1,2                   |
+cat <(echo area block) -        >${area_block}
+# 1:エリアCD  2:BLOCKCD
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kuniq -k2 $tmp-area_block       |
+# 1:BLOCKCD 
+hijoin -k1 ${tbld}/BLOCK_NAME   |
+# 1:BLOCKCD 2:BLOCK名
+tee $tmp-block                   |
+fmtfloat -c1                     |
+# 1:BLOCKCD 2:BLOCK名
+awk '{print $1,$1":"$2}'         |
+# 1:BLOCKCD 2:BLOCK名
+cat <(echo id text) -            >${block}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat ${tbld}/TEN_SITEN           |
+# 1:店舗CD 2:支店CD
+hejoin -k1 $tmp-ten_file        |
+# 1:店舗CD 2:支店CD
+hijoin -k2 ${tbld}/SITEN_NAME   |
+# 1:店舗CD 2:支店CD 3:支店名
+tee $tmp-siten                  |
+kuniq -k2,3                     |
+# 1:支店CD 2:支店名
+fmtfloat -c1                    |
+# 1:支店CD 2:支店名
+awk '{print $1,$1":"$2}'        |
+# 1:支店CD 2:支店名
+cat <(echo id text) -            >${siten}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+cat ${tbld}/TEN_SITEN             |
+# 1:店舗CD 2:支店CD 
+hejoin -k1 $tmp-siten             |
+# 1:店舗CD 2:支店CD
+hijoin -k1 ${tbld}/TEN_BLOCK      |
+# 1:店舗CD 2:BLOCKCD 3:支店CD     
+kuniq -k2,3                       |
+# 1:BLOCKCD 2:支店CD 
+fmtfloat -c1,2                    |
+cat <(echo block siten) -        >${block_siten}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+
+exit 0

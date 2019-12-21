@@ -1,0 +1,105 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_CATEGORYTENPO_DISCOUNT_COLOR_KENSAKU.SEARCH >>>　カテゴリ店舗別 カラー計算
+# Usage : CHOUHYOU_CATEGORYTENPO_DISCOUNT_COLOR_KENSAKU.SEARCH
+#
+# Written by Gao.Changshui(TRE・CHINA) / Date : 12 Sep. 2019
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+kinodir=SOFT_CHOUHYOU
+lv4d=${dir}/APDATA/${kinodir}/POMPA
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  echo '{"error":"1"}'
+  exit 1
+}
+
+# パラメータ定義
+[ $# -ne 2 ] && exit 1
+
+kikan=$1          #期間ID
+paramfile=$2
+out_colorfile=$(awk '$1=="14"{print $2}' ${paramfile})      #バックグラウンド色
+in_datafile=$(awk '$1=="15"{print $2}' ${paramfile})        #明細データファイル
+#年ID
+year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+thisyearweek=$(sdate thisweek) #週数
+thisweek=${year}${thisyearweek:4:2} #年週
+[ $? -eq 0 ] || ERROR_EXIT
+
+#AW/SS取得
+kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+# ${in_datafile}
+#1:DIVCD 2:地域CD 3:ゾーンCD 4:エリアCD 5:店CD 6:週CD 7:今年実績数 8:昨年実績数 9:計画数 10.在庫数
+
+start_col=14                            #開始列
+datypecnt=2                             #データ種類個数
+#カラー対応
+bg_color="red"
+
+#週のデータ個数によってデータ作成
+kuniq -k6 ${in_datafile}     |
+# 1.週CD
+insseq                       |
+# 1.順番 2.週CD
+scalc '$2,$1-1+'${start_col} > $tmp-weeknum
+# 1.週CD　2.終了列番号
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+kuniq -k5 ${in_datafile} |
+# 1:店CD 
+insseq                   |
+# 1.順番 2:店CD
+scalc '$2,$1-1'          > $tmp-categorynum
+# 1:店CD 2.行番号
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+# 1.ディビジョンCD 2.ラインCD 3.部門CD 4.カテゴリCD 5.季節区分 6.週CD 7.店CD 8.今年値下げフラグ 9.昨年値下げフラグ
+discountd=${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/${thisweek}/CATEGORY_TEN_WEEK_DISCOUNT
+
+#値下げの場合、画面のセルは赤色を付ける
+if [ -e ${discountd} ];then
+  kuniq -k1@4,8 ${discountd}    |
+  # 1.ディビジョンCD 2.カテゴリCD 3.季節区分 4.週CD 5.店CD 6.値下げフラグ 7.昨年値下げフラグ
+  hejoin -k6 <(echo 1)          |
+  # 1.ディビジョンCD 2.カテゴリCD 3.季節区分 4.週CD 5.店CD 6.値下げフラグ 7.昨年値下げフラグ
+  kuniq -k1@4,5                 |
+  # 1.ディビジョンCD 2.週CD 3.店CD
+  hijoin -k3 $tmp-categorynum   |
+  # 1.ディビジョンCD 2.週CD 3.店CD 4.行番号
+  hijoin -k2 $tmp-weeknum       |
+  # 1.ディビジョンCD 2.週CD 3.終了列番号 4.店CD 5.行番号
+  awk '{print $5,$3,$5,$3,"'${bg_color}'"}'     > $tmp-thisyeardiscount
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  :> $tmp-thisyeardiscount
+fi
+
+cat $tmp-thisyeardiscount >> ${out_colorfile}
+[ $? -eq 0 ] || ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-*
+
+exit 0

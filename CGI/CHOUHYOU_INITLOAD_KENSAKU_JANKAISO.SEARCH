@@ -1,0 +1,101 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_INITLOAD_KENSAKU_JANKAISO.SEARCH >>> 季節情報表示
+# Usage : CHOUHYOU_INITLOAD_KENSAKU_JANKAISO.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 31 July. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+
+pompad=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+masterd=${pompad}/KILLER/MASTER
+ured=${pompad}/URE
+zaikod=${pompad}/ZAIKO
+tbld=/SKCWEB/TBL
+# 変数チェック
+[ $# -ne 6 ] && exit 1 
+
+kisetutype=$1
+div=$2
+line=$3
+bumon=$4
+category=$5
+year=$6
+
+ERROR_EXIT(){
+  exit 1
+
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+mkdir -p ${masterd}/${kisetutype}/${year}
+[ $? -eq 0 ] || ERROR_EXIT
+
+touch ${masterd}/${kisetutype}/${year}/MST_DIV_NAME
+
+cat ${masterd}/${kisetutype}/${year}/MST_DIV_NAME |
+# 1:ディビジョンCD 2:ディビジョン名
+ssort -k1                                 |
+# 1:ディビジョンCD 2:ディビジョン名
+cat <(echo id text) -                     >${div}
+# 1:ディビジョンCD 2:ディビジョン名
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+touch ${masterd}/${kisetutype}/${year}/MST_DIV_LINE_NAME
+
+cat ${masterd}/${kisetutype}/${year}/MST_DIV_LINE_NAME  |
+# 1:ディビジョンCD 2:ラインCD 3:ライン名
+ssort -k1,2                      |
+awk '{print $1$2,$3}'            |
+# 1:ディビジョンCDラインCD 2:ライン名
+cat <(echo id text) -            >${line}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+touch ${masterd}/${kisetutype}/${year}/MST_DIV_LINE_BUMON_NAME
+
+cat ${masterd}/${kisetutype}/${year}/MST_DIV_LINE_BUMON_NAME  |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:部門名
+ssort -k1,3                      |
+awk '{print $1$2$3,$4}'          |
+# 1:ディビジョンCDラインCD部門CD 2:部門名
+cat <(echo id text) -            >${bumon}
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+touch ${masterd}/${kisetutype}/${year}/MST_DIV_LINE_BUMON_CATEGORI_NAME
+
+cat ${masterd}/${kisetutype}/${year}/MST_DIV_LINE_BUMON_CATEGORI_NAME |
+# 1:ディビジョンCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:カテゴリ名
+ssort -k5                        |
+awk '{print $1$2$3$4,$5}'        |
+cat <(echo id text) -            >${category}
+# 1:ディビジョンCDラインCD部門CDカテゴリCD 2:カテゴリ名
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+
+exit 0

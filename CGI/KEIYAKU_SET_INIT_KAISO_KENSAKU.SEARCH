@@ -1,0 +1,131 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_SET_INIT_KAISO_KENSAKU.SEARCH >>>  テーマ階層情報検索
+# Usage : KEIYAKU_SET_INIT_KAISO_KENSAKU.SEARCH
+#
+# Written by Li.Dan(TRE・CHINA) / Date : 19 Jan. 2019
+# Modify by Li.Dan(TRE・CHINA) / Date : 30 July. 2019
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tbld=/SKCWEB/TBL
+dir=/home/trial
+lv4d=${dir}/APDATA/SOFT_CHOUHYOU/POMPA
+#tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d%H%M%S)
+act_jand=${lv4d}/KISETU/MASTER/ACTIVE_JAN
+
+# 引数の確認							
+[ $# -ne 1 ] && exit 1							
+
+# パラメータ定義	
+tmp=$1-$(basename $0)_$$   #一時保存ファイル
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+cat ${tbld}/LINE_DIV                |
+# 1.ラインCD 2.ディビジョンCD
+hejoin -k2 ${lv4d}/TBL/SOFT_DIV     |
+kuniq -k1                           > $tmp-line
+# 1.ラインCD
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+cat ${act_jand}/ACTIVE_JAN       |
+# 1.JAN
+hejoin -k1 - ${tbld}/JAN_BUMON_MINIBUMON_HINSYU_HINMOKU_SUBSEG|
+# 1.JAN 2.部門CD 3.ミニ部門CD 4.品種CD 5.品目CD 6.サブセグメント
+kuniq -k2,6                           >$tmp-kaiso
+# 1.部門CD 2.ミニ部門CD 3.品種CD 4.品目CD 5.サブセグメント
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+hejoin -k1,5 $tmp-kaiso ${tbld}/BUMON_MINIBUMON_HINSYU_HINMOKU_SUBSEG_NAME   |
+# 1.部門CD 2.ミニ部門CD 3.品種CD 4.品目CD 5.サブセグメント6.サブセグメント名
+hijoin -k1 ${tbld}/BUMON_LINE                            |
+# 1.部門CD  2.ラインCD 3.ミニ部門CD 4.品種CD 5.品目CD 
+# 6.サブセグメント7.サブセグメント名
+hejoin -k2 $tmp-line                                     |
+selcol -c2 -c1 -c3,NF                                    |
+# 1.ラインCD  2.部門CD 3.ミニ部門CD 4.品種CD 5.品目CD 
+# 6.サブセグメント7.サブセグメント名
+hijoin -k2,5 ${tbld}/BUMON_MINIBUMON_HINSYU_HINMOKU_NAME |
+# 1.ラインCD  2.部門CD 3.ミニ部門CD 4.品種CD 5.品目CD 6.品目名
+# 7.サブセグメント8.サブセグメント名
+hijoin -k2,4 ${tbld}/BUMON_MINIBUMON_HINSYU_NAME         |
+# 1.ラインCD  2.部門CD 3.ミニ部門CD 4.品種CD 5.品種名 6.品目CD 
+# 7.品目名8.サブセグメント9.サブセグメント名
+hijoin -k2,3 ${tbld}/BUMON_MINIBUMON_NAME                |
+# 1.ラインCD  2.部門CD 3.ミニ部門CD 4.ミニ部門名 5.品種CD 6.品種名 7.品目CD 
+# 8.品目名 9.サブセグメント10.サブセグメント名
+hijoin -k2 ${tbld}/BUMON_NAME                            |
+# 1.ラインCD  2.部門CD 3.部門名 4.ミニ部門CD 5.ミニ部門名 6.品種CD 
+# 7.品種名 8.品目CD 9.品目名 10.サブセグメント11.サブセグメント名
+hijoin -k1 ${tbld}/LINE_NAME                             |
+# 1.ラインCD 2.ライン名 3.部門CD 4.部門名 5.ミニ部門CD 6.ミニ部門名 7.品種CD 
+# 8.品種名 9.品目CD 10.品目名 11.サブセグメント12.サブセグメント名
+selcol -c1 -c3 -c5 -c7 -c9 -c11 -c2 -c4 -c6 -c8 -c10 -c12  > $tmp-kaisomst
+# 1.ラインCD 2.部門CD 3.ミニ部門CD 4.品種CD 5.品目CD 6.サブセグメントCD 7.ライン名
+# 8.部門名 9.カテゴリ名 10.サブカテゴリ名 11.セグメント名 12.サブセグメント名
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+kuniq -k1@7 $tmp-kaisomst                                |
+# 1.ラインCD 2.ライン名
+awk '{print "0000",$1,$2,"false","LV1","false","true"}' > $tmp-datafile
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノード
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+kuniq -k1,2@8 $tmp-kaisomst                                |
+# 1.ラインCD 2.部門CD 3.ライン名
+awk '{print $1,$1$2,$3,"false","LV2","false","true"}'      >> $tmp-datafile
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノード
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+kuniq -k1,3@9 $tmp-kaisomst                                |
+# 1.ラインCD 2.部門CD 3.ミニ部門CD 4.カテゴリ名
+awk '{print $1$2,$1$2$3,$4,"false","LV3","false","true"}' >> $tmp-datafile
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノード
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+kuniq -k1,4@10 $tmp-kaisomst                                |
+# 1.ラインCD 2.部門CD 3.ミニ部門CD 4.品種CD 5.サブカテゴリ名
+awk '{print $1$2$3,$1$2$3$4,$5,"false","LV4","false","true"}' >> $tmp-datafile
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノード
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+kuniq -k1,5@11 $tmp-kaisomst                                |
+# 1.ラインCD 2.部門CD 3.ミニ部門CD 4.品種CD 5.品目CD 6.サブカテゴリ名
+awk '{print $1$2$3$4,$1$2$3$4$5,$6,"false","LV5","false","true"}' >> $tmp-datafile
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノード
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+kuniq -k1,6@12 $tmp-kaisomst                                |
+# 1.ラインCD 2.部門CD 3.ミニ部門CD 4.品種CD 5.品目CD 6.サブセグメントCD 7.サブカテゴリ名
+awk '{print $1$2$3$4$5,$1$2$3$4$5$6,$7,"false","LV6","false","true"}' >> $tmp-datafile
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノード
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+cat $tmp-datafile 
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+exit 0

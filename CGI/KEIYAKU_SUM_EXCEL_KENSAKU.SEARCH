@@ -1,0 +1,150 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_SUM_EXCEL_KENSAKU.SEARCH >>> 季節集計EXCEL出力
+# Usage : KEIYAKU_SUM_EXCEL_KENSAKU.SEARCH
+#
+# Written by Gao.ChangshuiTRE・CHINA) / Date : 28 Aug. 2019
+# Modify  by Zhang.Yunfeng(TRE・CHINA) / Date : 3 Dec. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+
+# 変数チェック
+[ $# -ne 6 ] && exit 1 
+
+kikan=$1       #期間ID
+weekcd=$2      #週CD           
+venderdata=$3  #ベンダー別データ
+hinsyudata=$4  #品種別データ
+kisetufile=$5  #季節区分ID
+motikosiflg=$6 #消化率項目（持越し抜き）1：抜き
+#季節区分データ行
+kisetutype_num=$(rowc ${kisetufile})
+
+#年ID
+#year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+year=${weekcd:0:4}
+#AW/SS取得
+kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+
+yearid=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+
+#該当期間の終了日付
+eday=$(awk '$2=="'${yearid}${kisetuname}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KISETU_UREZAIKO_KIKAN)
+if [ -z ${eday} ];then
+  if [ ${kisetuname} == "SS" ];then
+    eday=${yearid}"1130"
+  else
+    eday=$[${yearid}+1]"0531"
+  fi
+  #該当期間の終了週
+  endweek=$(sdate -w ${eday}d)
+  if [ ${weekcd} == ${endweek} ];then
+    endf="_END"
+  else
+    endf=""
+  fi
+else
+  endf=""
+fi
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+
+#季節区分より、ファイル判断
+cat << FIN > $tmp-kisetutype_file
+AW 01@02 VENDER_BETU 1
+SS 01@02 VENDER_BETU 1
+AW 01 VENDER_BETU_AUTUMN 1
+AW 02 VENDER_BETU_WINTER 1
+SS 01 VENDER_BETU_SPRING 1
+SS 02 VENDER_BETU_SUMMER 1
+AW 01@02 HINSYU_BETU 2
+SS 01@02 HINSYU_BETU 2
+AW 01 HINSYU_BETU_AUTUMN 2
+AW 02 HINSYU_BETU_WINTER 2
+SS 01 HINSYU_BETU_SPRING 2
+SS 02 HINSYU_BETU_SUMMER 2
+FIN
+
+#ベンダー別
+vender_file=$(hejoin -k1 <(echo ${kisetuname}) $tmp-kisetutype_file|hejoin -k2 <(toh -l@ ${kisetufile})|awk '$4==1{print $3}')
+#階層別
+kaiso_file=$(hejoin -k1 <(echo ${kisetuname}) $tmp-kisetutype_file|hejoin -k2 <(toh -l@ ${kisetufile})|awk '$4==2{print $3}')
+# ベンダー別進捗
+if [ -s ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${weekcd}/${vender_file}${endf} ];then
+  cat ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${weekcd}/${vender_file}${endf}   |
+  # 1.ベンダーCD 2.ベンダー名 3.DIVCD 4.DIV名 5.契約売価高 6.契約残売価高 7.契約プロパー消化率
+  # 8.契約プロパー消化率（持越し抜き） 9.計画売価高 10.計画残売価高 11.計画消化率 12.計画消化率（持越し抜き） 13.売上高税込
+  hejoin -v -k1 <(echo "_")                                                       |
+  fmtfloat -c1 -c3                                                                |
+  if [ ${motikosiflg} -eq 1 ];then
+    selcol -c1,6 -c8,10 -c12,13
+    # 1.ベンダーCD 2.ベンダー名 3.DIVCD 4.DIV名 5.契約売価高 6.契約残売価高 7.契約プロパー消化率（持越し抜き）
+    # 8.計画売価高 9.計画残売価高 10.計画消化率（持越し抜き） 11.売上高税込
+  else
+    selcol -c1,7 -c9,11 -c13
+    # 1.ベンダーCD 2.ベンダー名 3.DIVCD 4.DIV名 5.契約売価高 6.契約残売価高 7.契約プロパー消化率（持越し抜き）
+    # 8.計画売価高 9.計画残売価高 10.計画消化率（持越し抜き） 11.売上高税込
+  fi                                                                              > ${venderdata}
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  echo "true" >/dev/null
+fi
+
+# 品目別進捗
+if [ -s ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${weekcd}/${kaiso_file}${endf} ];then
+  cat ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${weekcd}/${kaiso_file}${endf}   |
+  # 1.DIVCD 2.DIV名 3.ラインCD 4.ライン名 5:部門CD 6.部門名 7:ミニ部門CD 8:ミニ部門名 9:品種CD 10:品種名
+  # 11.品目CD 12.品目名 13.契約売価高 14.契約残売価高 15.契約プロパー消化率 16.契約プロパー消化率（持越し抜き）
+  # 17.計画売価高 18.計画残売価高 19.計画消化率 20.計画消化率（持越し抜き） 21.売上高税込
+  fmtfloat -c1 -c3 -c5 -c7 -c9 -c11                                              |
+  if [ ${motikosiflg} -eq 1 ];then
+    selcol -c1,14 -c16,18 -c20,21
+    # 1.DIVCD 2.DIV名 3.ラインCD 4.ライン名 5:部門CD 6.部門名 7:ミニ部門CD 8:ミニ部門名 9:品種CD 10:品種名
+    # 11.品目CD 12.品目名 13.契約売価高 14.契約残売価高 15.契約プロパー消化率（持越し抜き）
+    # 16.計画売価高 17.計画残売価高 18.計画消化率（持越し抜き） 19.売上高税込
+  else
+    selcol -c1,15 -c17,19 -c21
+    # 1.DIVCD 2.DIV名 3.ラインCD 4.ライン名 5:部門CD 6.部門名 7:ミニ部門CD 8:ミニ部門名 9:品種CD 10:品種名
+    # 11.品目CD 12.品目名 13.契約売価高 14.契約残売価高 15.契約プロパー消化率
+    # 16.計画売価高 17.計画残売価高 18.計画消化率 19.売上高税込
+  fi                                                                  > ${hinsyudata}
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+else
+  echo "true" >/dev/null
+fi
+
+#////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+
+# 終了
+rm -rf $tmp-*
+
+exit 0

@@ -1,0 +1,79 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_SET_INIT_KAISO_JSON_MAKE.SEARCH  >>>  テーマ階層情報検索
+# Usage : KEIYAKU_SET_INIT_KAISO_JSON_MAKE.SEARCH
+#
+# Written by Li.Dan(TRE・CHINA) / Date : 19 Jan. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tbld=/SKCWEB/TBL
+dir=/home/trial
+lv4d=${dir}/APDATA/SOFT_CHOUHYOU/POMPA
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+
+# 引数の確認							
+[ $# -ne 2 ] && exit 1							
+
+# パラメータ定義	
+datafile=$1
+chkflg=$2
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+# 1.親ノードID 2.子ノードID 3.子ノード名 4.checkflg 5.階層FLG 6.openflg 7.親ノードflg
+
+echo '<!--INFO_FORMAT-->' > $tmp-format_json
+echo '{"pId":"%1","id":"%2","name":"%3"},' >> $tmp-format_json
+# 1.親ノードID 2.子ノードID  3.子ノード名 4.checkflg 5.openflg 6.親ノードflg 7.lvid
+echo '<!--INFO_FORMAT-->' >> $tmp-format_json
+
+awk '{print $1,$2,$3}' ${datafile} > $tmp-data
+# 1.親ノードID 2.子ノードID 3.子ノード名 4.checkflg 5.openflg 6.leafflg 7.lvid
+[ $? -eq 0 ] || ERROR_EXIT
+
+cat $tmp-data                            |
+# 1.親ノードID 2.子ノードID 3.子ノード名 4.checkflg 5.openflg 6.leafflg 7.lvid
+render -i -lINFO_FORMAT $tmp-format_json > $tmp-result1
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+head -n -1 $tmp-result1 |
+cat <(echo "[") -       |
+toh                     > $tmp-head_one
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+tail -1 $tmp-result1                               |
+awk '{print substr($1,1,length($1)-1)"]"}'         |
+cat $tmp-head_one -                                |
+toh                                                |
+sed 's/ //g'
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* > /dev/null
+
+exit 0

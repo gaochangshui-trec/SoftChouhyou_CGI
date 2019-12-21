@@ -1,0 +1,131 @@
+#!/bin/bash -xv
+#
+# CHOUHYOU_CATEGORY_GRAPH_KENSAKU.SEARCH >>> グラフ情報検索
+# Usage : CHOUHYOU_CATEGORY_GRAPH_KENSAKU.SEARCH
+#
+# Written by Tan.zhihui(TRE・CHINA) / Date : 11 Sep. 2019
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+# 環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+tmp=/tmp/$$-$(basename $0)_$(date +%Y%m%d)_$(date +%H%M%S)
+dir=/home/trial
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+tbld=/SKCWEB/TBL
+act_jand=/home/trial/APDATA/SKCS/POMPA/MASTER
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+# 変数チェック
+[ $# -ne 1 ] && exit 1 
+
+detailfile=$1          #期間ID
+
+#${detailfile}
+#1:DIVCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:季節ID 6:週CD 
+#7:今年実績数 8:計画数 9:昨年実績数 10:今年在庫数 11:昨年在庫数
+datacnt=$(kuniq -k1,5 ${detailfile}|rowc)
+
+echo '"kotoure":{'   > $tmp-kotoure_json
+echo '"plan":{'      > $tmp-plan_json
+echo '"sakuure":{'   > $tmp-sakuure_json
+echo '"kotozaiko":{' > $tmp-kotozaiko_json
+echo '"sakuzaiko":{' > $tmp-sakuzaiko_json
+echo '"week_list":{' > $tmp-week_list_json
+echo '"leftmax":{'   > $tmp-leftmax_json
+echo '"rightmax":{'  > $tmp-rightmax_json
+
+kuniq -k1,5 ${detailfile} |
+#1:DIVCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:季節ID
+insseq                    |
+#1.id 2:DIVCD 3:ラインCD 4:部門CD 5:カテゴリCD 6:季節ID
+while read no div line bumon category kisetu ; do
+  keyid=${div}${line}${bumon}${category}${kisetu}
+  
+  echo ${div} ${line} ${bumon} ${category} ${kisetu} |
+  #1:DIVCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:季節ID
+  hejoin -k1,5 - ${detailfile}                       > $tmp-tmpdata
+  #1:DIVCD 2:ラインCD 3:部門CD 4:カテゴリCD 5:季節ID 6:週CD 
+  #7:今年実績数 8:計画数 9:昨年実績数 10:今年在庫数 11:昨年在庫数
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+ 
+  selcol -c7 $tmp-tmpdata > $tmp-kotoure
+  selcol -c8 $tmp-tmpdata > $tmp-plan
+  selcol -c9 $tmp-tmpdata > $tmp-sakuure
+  selcol -c10 $tmp-tmpdata > $tmp-kotozaiko
+  selcol -c11 $tmp-tmpdata > $tmp-sakuzaiko
+  
+  selcol -c6  $tmp-tmpdata   |
+  substr -c1.5.2             |
+  fmtfloat -c1               |
+  awk '{print $1"w"}'        >$tmp-week_list
+  [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  
+  leftmax=$(selcol -c7,9 $tmp-tmpdata|tov|sort -k1,1nr|head -n1)
+  rightmax=$(selcol -c10,11 $tmp-tmpdata|tov|sort -k1,1nr|head -n1)
+
+  echo '[" "]' > $tmp-sted
+  kotoure=$(toh -l'","' $tmp-kotoure|crossjoin $tmp-sted - |awk '{print $1$3$2}')
+  plan=$(toh -l'","' $tmp-plan|crossjoin $tmp-sted - |awk '{print $1$3$2}')
+  sakuure=$(toh -l'","' $tmp-sakuure|crossjoin $tmp-sted - |awk '{print $1$3$2}')
+  kotozaiko=$(toh -l'","' $tmp-kotozaiko|crossjoin $tmp-sted - |awk '{print $1$3$2}')
+  sakuzaiko=$(toh -l'","' $tmp-sakuzaiko|crossjoin $tmp-sted - |awk '{print $1$3$2}')
+  week_list=$(toh -l'","' $tmp-week_list|crossjoin $tmp-sted - |awk '{print $1$3$2}')
+  
+  if [ ${datacnt} -eq ${no} ];then
+    endmark='}'
+  else
+    endmark=','
+  fi
+  
+  echo '"'${keyid}'":'${kotoure}${endmark}       >> $tmp-kotoure_json
+  echo '"'${keyid}'":'${plan}${endmark}          >> $tmp-plan_json
+  echo '"'${keyid}'":'${sakuure}${endmark}       >> $tmp-sakuure_json
+  echo '"'${keyid}'":'${kotozaiko}${endmark}     >> $tmp-kotozaiko_json
+  echo '"'${keyid}'":'${sakuzaiko}${endmark}     >> $tmp-sakuzaiko_json
+  echo '"'${keyid}'":'${week_list}${endmark}     >> $tmp-week_list_json
+  echo '"'${keyid}'":"'${leftmax}'"'${endmark}   >> $tmp-leftmax_json
+  echo '"'${keyid}'":"'${rightmax}'"'${endmark}  >> $tmp-rightmax_json
+  
+:; done
+[ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+
+echo "{"                             > $tmp-outobj
+cat $tmp-kotoure_json <(echo ",")   >> $tmp-outobj
+cat $tmp-plan_json <(echo ",")      >> $tmp-outobj
+cat $tmp-sakuure_json <(echo ",")   >> $tmp-outobj
+cat $tmp-kotozaiko_json <(echo ",") >> $tmp-outobj
+cat $tmp-sakuzaiko_json <(echo ",") >> $tmp-outobj
+cat $tmp-week_list_json <(echo ",") >> $tmp-outobj
+cat $tmp-leftmax_json <(echo ",")   >> $tmp-outobj
+cat $tmp-rightmax_json <(echo "}")  >> $tmp-outobj
+
+cat $tmp-outobj
+
+# $tmp-outweekdata 
+# 1:DIVCD 2:カテゴリCD 3:今年週 4:今年週別実績 5:今年週別計画数 6:昨年週別実績
+# 7:今年週別在庫数 8:昨年週別在庫数
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+
+rm -rf $tmp-* &>/dev/null
+exit 0
