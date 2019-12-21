@@ -76,7 +76,7 @@ ${cshld}/${shl} $tmp-datafile > $tmp-result
 
 cat $tmp-result
 
-#testadd
+#testadd111
 
 #/////////////////////////////////////////////////////////////////////////
 # 終了部分
