@@ -21,6 +21,8 @@ logd=${cgishld}/LOG
 echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
 exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
 
+
+
 # ディレクトリ定義
 dir=/home/trial
 shld=${dir}/AP/SOFT_CHOUHYOU/CGI
