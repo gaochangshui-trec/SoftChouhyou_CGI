@@ -75,7 +75,6 @@ ${cshld}/${shl} $tmp-datafile > $tmp-result
 [ $? -eq 0 ] || ERROR_EXIT
 
 cat $tmp-result
-#newbranch
 
 #/////////////////////////////////////////////////////////////////////////
 # 終了部分
