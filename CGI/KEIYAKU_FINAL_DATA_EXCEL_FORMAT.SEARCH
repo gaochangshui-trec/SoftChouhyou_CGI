@@ -68,7 +68,7 @@ filename="【"${kisetuname}"_"${kisetutypename}"】季節単品帳票"_$(date +%
 mkdir -p $tmp/outfile
 [ $? -eq 0 ] || ERROR_EXIT
 
-tanpin_sheet=1
+tanpin_sheet=2
 
 # datafile
 # 1:季節 2:部門 3:カテゴリ 4:サブカテゴリ 5:セグメント 6:サブセグメント 7:JAN 8:商品名 9:商談者CD 10:商談者

@@ -74,8 +74,8 @@ kisetutypename=$(hejoin -k1 ${kisetufile} ${lv4d}/KISETU/MASTER/COMMON/MST_KISET
 #ファイル名
 filename="【"${kisetuname}"_"${kisetutypename}"】季節集計帳票_"${yearweek:4:2}"w"
 
-kaiso_sheet=1
-vender_sheet=2
+kaiso_sheet=2
+vender_sheet=3
 
 #列ヘッダー名
 if [ ${motikosiflg} -eq 1 ];then
