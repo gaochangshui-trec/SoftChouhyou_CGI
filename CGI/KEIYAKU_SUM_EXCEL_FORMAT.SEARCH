@@ -74,6 +74,9 @@ kisetutypename=$(hejoin -k1 ${kisetufile} ${lv4d}/KISETU/MASTER/COMMON/MST_KISET
 #ファイル名
 filename="【"${kisetuname}"_"${kisetutypename}"】季節集計帳票_"${yearweek:4:2}"w"
 
+kaiso_sheet=1
+vender_sheet=2
+
 #列ヘッダー名
 if [ ${motikosiflg} -eq 1 ];then
   echo "契約プロパー消化率（持越し抜き）"                   > $tmp-colname1
@@ -91,24 +94,24 @@ mkdir -p $tmp/outfile
 #sheet1品種別
 #品種別title
 echo "${kisetuname:0:4}年${kisetuname:4:2}${kisetutypename}進捗　${yearweek:4:2}週時点　商品階層別進捗" > $tmp-sheet1_title
-echo FILLDATA 1 C11 $tmp-sheet1_title                         >> $tmp-script
+echo FILLDATA ${kaiso_sheet} C11 $tmp-sheet1_title                         >> $tmp-script
 #列ヘッダー名
-echo FILLDATA 1 P13 $tmp-colname1                             >> $tmp-script
-echo FILLDATA 1 S13 $tmp-colname2                             >> $tmp-script
+echo FILLDATA ${kaiso_sheet} P13 $tmp-colname1                             >> $tmp-script
+echo FILLDATA ${kaiso_sheet} S13 $tmp-colname2                             >> $tmp-script
 
 #データ
-echo FILLDATA 1 B14 ${hinsyudata}  >> $tmp-script
+echo FILLDATA ${kaiso_sheet} B14 ${hinsyudata}  >> $tmp-script
 
 #品目別データ行
 hinsyudata_num=$[$(rowc ${hinsyudata})+13]
 
-echo COPYSTYLE 1 J2 14,2:${hinsyudata_num},13                 >> $tmp-script
-echo COPYSTYLE 1 K2 14,14:${hinsyudata_num},15                >> $tmp-script
-echo COPYSTYLE 1 L2 14,16:${hinsyudata_num},16                >> $tmp-script
-echo COPYSTYLE 1 K2 14,17:${hinsyudata_num},18                >> $tmp-script
-echo COPYSTYLE 1 L2 14,19:${hinsyudata_num},19                >> $tmp-script
-echo COPYSTYLE 1 K2 14,20:${hinsyudata_num},20                >> $tmp-script
-echo VMERGECELL 1 B14:B$hinsyudata_num                        >> $tmp-script
+echo COPYSTYLE ${kaiso_sheet} J2 14,2:${hinsyudata_num},13                 >> $tmp-script
+echo COPYSTYLE ${kaiso_sheet} K2 14,14:${hinsyudata_num},15                >> $tmp-script
+echo COPYSTYLE ${kaiso_sheet} L2 14,16:${hinsyudata_num},16                >> $tmp-script
+echo COPYSTYLE ${kaiso_sheet} K2 14,17:${hinsyudata_num},18                >> $tmp-script
+echo COPYSTYLE ${kaiso_sheet} L2 14,19:${hinsyudata_num},19                >> $tmp-script
+echo COPYSTYLE ${kaiso_sheet} K2 14,20:${hinsyudata_num},20                >> $tmp-script
+echo VMERGECELL ${kaiso_sheet} B14:B$hinsyudata_num                        >> $tmp-script
 
 #格式刷
 cat ${hinsyudata}                                                  |
@@ -139,68 +142,68 @@ awk 'BEGIN{
 {
   #Div集計
   if($1 == 9999 && $2 == "総合計")  {
-    print "COPYSTYLE 1 S6 "(NR+13)",2:"(NR+13)",2";
-    print "COPYSTYLE 1 T6 "(NR+13)",3:"(NR+13)",3";
-    print "COPYSTYLE 1 U6 "(NR+13)",4:"(NR+13)",13";
-    print "COPYSTYLE 1 V6 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE 1 W6 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE 1 V6 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE 1 W6 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE 1 V6 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "${kaiso_sheet}" S6 "(NR+13)",2:"(NR+13)",2";
+    print "COPYSTYLE "${kaiso_sheet}" T6 "(NR+13)",3:"(NR+13)",3";
+    print "COPYSTYLE "${kaiso_sheet}" U6 "(NR+13)",4:"(NR+13)",13";
+    print "COPYSTYLE "${kaiso_sheet}" V6 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "${kaiso_sheet}" W6 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "${kaiso_sheet}" V6 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "${kaiso_sheet}" W6 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "${kaiso_sheet}" V6 "(NR+13)",20:"(NR+13)",20";
   } 
   else if($3 == 9999 && $4 == "_")  {
-    print "COPYSTYLE 1 T5 "(NR+13)",3:"(NR+13)",3";
-    print "COPYSTYLE 1 U5 "(NR+13)",4:"(NR+13)",13";
-    print "COPYSTYLE 1 V5 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE 1 W5 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE 1 V5 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE 1 W5 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE 1 V5 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "${kaiso_sheet}" T5 "(NR+13)",3:"(NR+13)",3";
+    print "COPYSTYLE "${kaiso_sheet}" U5 "(NR+13)",4:"(NR+13)",13";
+    print "COPYSTYLE "${kaiso_sheet}" V5 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "${kaiso_sheet}" W5 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "${kaiso_sheet}" V5 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "${kaiso_sheet}" W5 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "${kaiso_sheet}" V5 "(NR+13)",20:"(NR+13)",20";
   } 
   #ライン集計
   else if($5 == 9999 && $6 == "_") {
-    print "COPYSTYLE 1 T4 "(NR+13)",5:"(NR+13)",5";
-    print "COPYSTYLE 1 U4 "(NR+13)",6:"(NR+13)",13";
-    print "COPYSTYLE 1 V4 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE 1 W4 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE 1 V4 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE 1 W4 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE 1 V4 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "${kaiso_sheet}" T4 "(NR+13)",5:"(NR+13)",5";
+    print "COPYSTYLE "${kaiso_sheet}" U4 "(NR+13)",6:"(NR+13)",13";
+    print "COPYSTYLE "${kaiso_sheet}" V4 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "${kaiso_sheet}" W4 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "${kaiso_sheet}" V4 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "${kaiso_sheet}" W4 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "${kaiso_sheet}" V4 "(NR+13)",20:"(NR+13)",20";
   }
   #部門集計
   else if($7 == 9999 && $8 == "_") {
-    print "COPYSTYLE 1 T3 "(NR+13)",7:"(NR+13)",7";
-    print "COPYSTYLE 1 U3 "(NR+13)",8:"(NR+13)",13";
-    print "COPYSTYLE 1 V3 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE 1 W3 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE 1 V3 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE 1 W3 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE 1 V3 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "${kaiso_sheet}" T3 "(NR+13)",7:"(NR+13)",7";
+    print "COPYSTYLE "${kaiso_sheet}" U3 "(NR+13)",8:"(NR+13)",13";
+    print "COPYSTYLE "${kaiso_sheet}" V3 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "${kaiso_sheet}" W3 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "${kaiso_sheet}" V3 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "${kaiso_sheet}" W3 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "${kaiso_sheet}" V3 "(NR+13)",20:"(NR+13)",20";
   }
   #ミニ部門CD集計 
   else if($9 == 9999 && $10 == "_") {
-    print "COPYSTYLE 1 T2 "(NR+13)",9:"(NR+13)",9";
-    print "COPYSTYLE 1 U2 "(NR+13)",10:"(NR+13)",13";
-    print "COPYSTYLE 1 V2 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE 1 W2 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE 1 V2 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE 1 W2 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE 1 V2 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "${kaiso_sheet}" T2 "(NR+13)",9:"(NR+13)",9";
+    print "COPYSTYLE "${kaiso_sheet}" U2 "(NR+13)",10:"(NR+13)",13";
+    print "COPYSTYLE "${kaiso_sheet}" V2 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "${kaiso_sheet}" W2 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "${kaiso_sheet}" V2 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "${kaiso_sheet}" W2 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "${kaiso_sheet}" V2 "(NR+13)",20:"(NR+13)",20";
   }
   else if($11 == 9999 && $12 == "_") {
-    print "COPYSTYLE 1 T1 "(NR+13)",11:"(NR+13)",11";
-    print "COPYSTYLE 1 U1 "(NR+13)",12:"(NR+13)",13";
-    print "COPYSTYLE 1 V1 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE 1 W1 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE 1 V1 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE 1 W1 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE 1 V1 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "${kaiso_sheet}" T1 "(NR+13)",11:"(NR+13)",11";
+    print "COPYSTYLE "${kaiso_sheet}" U1 "(NR+13)",12:"(NR+13)",13";
+    print "COPYSTYLE "${kaiso_sheet}" V1 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "${kaiso_sheet}" W1 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "${kaiso_sheet}" V1 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "${kaiso_sheet}" W1 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "${kaiso_sheet}" V1 "(NR+13)",20:"(NR+13)",20";
   }
   #統合品種セル
   if($10 != "_"){
     if(hinsyu_rendername!=$10){
       if(hinsyu_stratrow!=1&&hinsyu_rendername!=""){
-        print "VMERGECELL 1 "NR+13-hinsyu_stratrow",11:"(NR+13)",11"; 
+        print "VMERGECELL "${kaiso_sheet}" "NR+13-hinsyu_stratrow",11:"(NR+13)",11"; 
       }
       hinsyu_rendername=$10;
       hinsyu_stratrow=0;
@@ -211,7 +214,7 @@ awk 'BEGIN{
   if($8 != "_"){
     if(minibumon_rendername!=$8){
       if(minibumon_stratrow!=1&&minibumon_rendername!=""){
-        print "VMERGECELL 1 "NR+13-minibumon_stratrow",9:"(NR+13)",10"; 
+        print "VMERGECELL "${kaiso_sheet}" "NR+13-minibumon_stratrow",9:"(NR+13)",10"; 
       }
       minibumon_rendername=$8;
       minibumon_stratrow=0;  
@@ -222,7 +225,7 @@ awk 'BEGIN{
   if($6 != "_"){
     if(bumon_rendername!=$6){
       if(bumon_stratrow!=1&&bumon_rendername!=""){
-        print "VMERGECELL 1 "NR+13-bumon_stratrow",7:"(NR+13)",8"; 
+        print "VMERGECELL "${kaiso_sheet}" "NR+13-bumon_stratrow",7:"(NR+13)",8"; 
       }
       bumon_rendername=$6;
       bumon_stratrow=0;  
@@ -233,7 +236,7 @@ awk 'BEGIN{
   if($4 != "_"){
     if(line_rendername!=$4){
       if(line_stratrow!=1&&line_rendername!=""){
-        print "VMERGECELL 1 "NR+13-line_stratrow",5:"(NR+13)",6"; 
+        print "VMERGECELL "${kaiso_sheet}" "NR+13-line_stratrow",5:"(NR+13)",6"; 
       }
       line_rendername=$4;
       line_stratrow=0;
@@ -244,7 +247,7 @@ awk 'BEGIN{
   if($2 != "_"){
     if(div_rendername!=$2){
       if(div_stratrow!=1&&div_rendername!=""){
-        print "VMERGECELL 1 "NR+13-div_stratrow",3:"(NR+13)",4"; 
+        print "VMERGECELL "${kaiso_sheet}" "NR+13-div_stratrow",3:"(NR+13)",4"; 
       }
       div_rendername=$2;
       div_stratrow=0;
@@ -256,7 +259,7 @@ awk 'BEGIN{
   if($4 != "_"){
     if(line_groupname!=$4){
       if(line_grouprow!=1&&line_groupname!=""){
-        print "VGROUPROW 1 "NR+13-line_grouprow" "NR+12;
+        print "VGROUPROW "${kaiso_sheet}" "NR+13-line_grouprow" "NR+12;
       }
       line_groupname=$4;
       line_grouprow=0;
@@ -267,7 +270,7 @@ awk 'BEGIN{
   if($6 != "_"){
     if(bumon_groupname!=$6){
       if(bumon_grouprow!=1&&bumon_groupname!=""){
-        print "VGROUPROW 1 "NR+13-bumon_grouprow" "NR+12;
+        print "VGROUPROW "${kaiso_sheet}" "NR+13-bumon_grouprow" "NR+12;
       }
       bumon_groupname=$6;
       bumon_grouprow=0;
@@ -278,7 +281,7 @@ awk 'BEGIN{
   if($8 != "_"){
     if(mini_groupname!=$8){
       if(mini_grouprow!=1&&mini_groupname!=""){
-        print "VGROUPROW 1 "NR+13-mini_grouprow" "NR+12;
+        print "VGROUPROW "${kaiso_sheet}" "NR+13-mini_grouprow" "NR+12;
       }
       mini_groupname=$8;
       mini_grouprow=0;
@@ -289,7 +292,7 @@ awk 'BEGIN{
   if($10 != "_"){
     if(hinsyu_groupname!=$10){
       if(hinsyu_grouprow!=1&&hinsyu_groupname!=""){
-        print "VGROUPROW 1 "NR+13-hinsyu_grouprow" "NR+12;
+        print "VGROUPROW "${kaiso_sheet}" "NR+13-hinsyu_grouprow" "NR+12;
       }
       hinsyu_groupname=$10;
       hinsyu_grouprow=0;
@@ -305,52 +308,52 @@ echo "${kisetuname:0:4}年${kisetuname:4:2}${kisetutypename}進捗　${yearweek:
 #ベンダー別データ行
 venderdata_num=$[$(rowc ${venderdata})+5]
 #データ
-echo FILLDATA 2 B6 ${venderdata}                              >> $tmp-script
+echo FILLDATA ${vender_sheet} B6 ${venderdata}                              >> $tmp-script
 #集計数
 #echo FILLDATA 2 F4 ${total_sum}                               >> $tmp-script
 #title
-echo FILLDATA 2 B3 $tmp-sheet2_title                          >> $tmp-script
+echo FILLDATA ${vender_sheet} B3 $tmp-sheet2_title                          >> $tmp-script
 #格式刷
 #契約売価高 契約残売価高
-echo COPYSTYLE 2 G1 6,6:${venderdata_num-1},7                   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} G1 6,6:${venderdata_num-1},7                   >> $tmp-script
 #計画売価高 計画残売価高 売上高税込
-echo COPYSTYLE 2 G1 6,9:${venderdata_num-1},10                  >> $tmp-script
-echo COPYSTYLE 2 G1 6,12:${venderdata_num-1},12                 >> $tmp-script
+echo COPYSTYLE ${vender_sheet} G1 6,9:${venderdata_num-1},10                  >> $tmp-script
+echo COPYSTYLE ${vender_sheet} G1 6,12:${venderdata_num-1},12                 >> $tmp-script
 #契約プロパー消化率
-echo COPYSTYLE 2 H1 6,8:${venderdata_num-1},8                   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} H1 6,8:${venderdata_num-1},8                   >> $tmp-script
 #計画消化率
-echo COPYSTYLE 2 H1 6,11:${venderdata_num-1},11                 >> $tmp-script
+echo COPYSTYLE ${vender_sheet} H1 6,11:${venderdata_num-1},11                 >> $tmp-script
 #ベンダー名
-echo COPYSTYLE 2 J1 6,3:${venderdata_num-1},3                   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} J1 6,3:${venderdata_num-1},3                   >> $tmp-script
 #ベンダーＣＤ
-echo COPYSTYLE 2 L1 6,2:${venderdata_num-1},2                   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} L1 6,2:${venderdata_num-1},2                   >> $tmp-script
 #DivCD
-echo COPYSTYLE 2 L1 6,4:${venderdata_num-1},4                   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} L1 6,4:${venderdata_num-1},4                   >> $tmp-script
 #Div
-echo COPYSTYLE 2 J1 6,5:${venderdata_num-1},5                   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} J1 6,5:${venderdata_num-1},5                   >> $tmp-script
 
 #合計
 #契約売価高 契約残売価高
-echo COPYSTYLE 2 G2 ${venderdata_num},6:${venderdata_num},7     >> $tmp-script
+echo COPYSTYLE ${vender_sheet} G2 ${venderdata_num},6:${venderdata_num},7     >> $tmp-script
 #計画売価高 計画残売価高 売上高税込
-echo COPYSTYLE 2 G2 ${venderdata_num},9:${venderdata_num},10    >> $tmp-script
-echo COPYSTYLE 2 G2 ${venderdata_num},12:${venderdata_num},12   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} G2 ${venderdata_num},9:${venderdata_num},10    >> $tmp-script
+echo COPYSTYLE ${vender_sheet} G2 ${venderdata_num},12:${venderdata_num},12   >> $tmp-script
 #契約プロパー消化率
-echo COPYSTYLE 2 H2 ${venderdata_num},8:${venderdata_num},8     >> $tmp-script
+echo COPYSTYLE ${vender_sheet} H2 ${venderdata_num},8:${venderdata_num},8     >> $tmp-script
 #計画消化率
-echo COPYSTYLE 2 H2 ${venderdata_num},11:${venderdata_num},11   >> $tmp-script
+echo COPYSTYLE ${vender_sheet} H2 ${venderdata_num},11:${venderdata_num},11   >> $tmp-script
 #ベンダーＣＤ
-echo COPYSTYLE 2 F2 ${venderdata_num},2:${venderdata_num},2     >> $tmp-script
+echo COPYSTYLE ${vender_sheet} F2 ${venderdata_num},2:${venderdata_num},2     >> $tmp-script
 #ベンダー名
-echo COPYSTYLE 2 J2 ${venderdata_num},3:${venderdata_num},3     >> $tmp-script
+echo COPYSTYLE ${vender_sheet} J2 ${venderdata_num},3:${venderdata_num},3     >> $tmp-script
 #Div
-echo COPYSTYLE 2 K2 ${venderdata_num},4:${venderdata_num},4     >> $tmp-script
+echo COPYSTYLE ${vender_sheet} K2 ${venderdata_num},4:${venderdata_num},4     >> $tmp-script
 #Div
-echo COPYSTYLE 2 L2 ${venderdata_num},5:${venderdata_num},5     >> $tmp-script
+echo COPYSTYLE ${vender_sheet} L2 ${venderdata_num},5:${venderdata_num},5     >> $tmp-script
 
 #列ヘッダー名
-echo FILLDATA 2 H5 $tmp-colname1                                >> $tmp-script
-echo FILLDATA 2 k5 $tmp-colname2                                >> $tmp-script
+echo FILLDATA ${vender_sheet} H5 $tmp-colname1                                >> $tmp-script
+echo FILLDATA ${vender_sheet} k5 $tmp-colname2                                >> $tmp-script
 
 # EXCEL作成
 mkExcel-3.14.3 -t${formatd}/KISETU_SINTYOKU_FORMAT.xlsx -o$tmp/outfile/${filename}.xlsx -S$tmp-script
