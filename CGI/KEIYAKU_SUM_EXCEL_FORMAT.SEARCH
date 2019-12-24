@@ -203,7 +203,7 @@ awk 'BEGIN{
   if($10 != "_"){
     if(hinsyu_rendername!=$10){
       if(hinsyu_stratrow!=1&&hinsyu_rendername!=""){
-        print "VMERGECELL 1 "NR+13-hinsyu_stratrow",11:"(NR+13)",11"; 
+        print "VMERGECELL "'${kaiso_sheet}'" "NR+13-hinsyu_stratrow",11:"(NR+13)",11"; 
       }
       hinsyu_rendername=$10;
       hinsyu_stratrow=0;
@@ -214,7 +214,7 @@ awk 'BEGIN{
   if($8 != "_"){
     if(minibumon_rendername!=$8){
       if(minibumon_stratrow!=1&&minibumon_rendername!=""){
-        print "VMERGECELL "${kaiso_sheet}" "NR+13-minibumon_stratrow",9:"(NR+13)",10"; 
+        print "VMERGECELL "'${kaiso_sheet}'" "NR+13-minibumon_stratrow",9:"(NR+13)",10"; 
       }
       minibumon_rendername=$8;
       minibumon_stratrow=0;  
@@ -225,7 +225,7 @@ awk 'BEGIN{
   if($6 != "_"){
     if(bumon_rendername!=$6){
       if(bumon_stratrow!=1&&bumon_rendername!=""){
-        print "VMERGECELL "${kaiso_sheet}" "NR+13-bumon_stratrow",7:"(NR+13)",8"; 
+        print "VMERGECELL "'${kaiso_sheet}'" "NR+13-bumon_stratrow",7:"(NR+13)",8"; 
       }
       bumon_rendername=$6;
       bumon_stratrow=0;  
@@ -236,7 +236,7 @@ awk 'BEGIN{
   if($4 != "_"){
     if(line_rendername!=$4){
       if(line_stratrow!=1&&line_rendername!=""){
-        print "VMERGECELL "${kaiso_sheet}" "NR+13-line_stratrow",5:"(NR+13)",6"; 
+        print "VMERGECELL "'${kaiso_sheet}'" "NR+13-line_stratrow",5:"(NR+13)",6"; 
       }
       line_rendername=$4;
       line_stratrow=0;
@@ -247,7 +247,7 @@ awk 'BEGIN{
   if($2 != "_"){
     if(div_rendername!=$2){
       if(div_stratrow!=1&&div_rendername!=""){
-        print "VMERGECELL "${kaiso_sheet}" "NR+13-div_stratrow",3:"(NR+13)",4"; 
+        print "VMERGECELL "'${kaiso_sheet}'" "NR+13-div_stratrow",3:"(NR+13)",4"; 
       }
       div_rendername=$2;
       div_stratrow=0;
@@ -259,7 +259,7 @@ awk 'BEGIN{
   if($4 != "_"){
     if(line_groupname!=$4){
       if(line_grouprow!=1&&line_groupname!=""){
-        print "VGROUPROW "${kaiso_sheet}" "NR+13-line_grouprow" "NR+12;
+        print "VGROUPROW "'${kaiso_sheet}'" "NR+13-line_grouprow" "NR+12;
       }
       line_groupname=$4;
       line_grouprow=0;
@@ -270,7 +270,7 @@ awk 'BEGIN{
   if($6 != "_"){
     if(bumon_groupname!=$6){
       if(bumon_grouprow!=1&&bumon_groupname!=""){
-        print "VGROUPROW "${kaiso_sheet}" "NR+13-bumon_grouprow" "NR+12;
+        print "VGROUPROW "'${kaiso_sheet}'" "NR+13-bumon_grouprow" "NR+12;
       }
       bumon_groupname=$6;
       bumon_grouprow=0;
@@ -281,7 +281,7 @@ awk 'BEGIN{
   if($8 != "_"){
     if(mini_groupname!=$8){
       if(mini_grouprow!=1&&mini_groupname!=""){
-        print "VGROUPROW "${kaiso_sheet}" "NR+13-mini_grouprow" "NR+12;
+        print "VGROUPROW "'${kaiso_sheet}'" "NR+13-mini_grouprow" "NR+12;
       }
       mini_groupname=$8;
       mini_grouprow=0;
@@ -292,7 +292,7 @@ awk 'BEGIN{
   if($10 != "_"){
     if(hinsyu_groupname!=$10){
       if(hinsyu_grouprow!=1&&hinsyu_groupname!=""){
-        print "VGROUPROW "${kaiso_sheet}" "NR+13-hinsyu_grouprow" "NR+12;
+        print "VGROUPROW "'${kaiso_sheet}'" "NR+13-hinsyu_grouprow" "NR+12;
       }
       hinsyu_groupname=$10;
       hinsyu_grouprow=0;
