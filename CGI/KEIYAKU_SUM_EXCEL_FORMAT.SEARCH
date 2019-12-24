@@ -142,68 +142,68 @@ awk 'BEGIN{
 {
   #Div集計
   if($1 == 9999 && $2 == "総合計")  {
-    print "COPYSTYLE '${kaiso_sheet}'" S6 "(NR+13)",2:"(NR+13)",2";
-    print "COPYSTYLE '${kaiso_sheet}' T6 "(NR+13)",3:"(NR+13)",3";
-    print "COPYSTYLE '${kaiso_sheet}' U6 "(NR+13)",4:"(NR+13)",13";
-    print "COPYSTYLE '${kaiso_sheet}' V6 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE '${kaiso_sheet}' W6 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE '${kaiso_sheet}' V6 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE '${kaiso_sheet}' W6 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE '${kaiso_sheet}' V6 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "'${kaiso_sheet}'" S6 "(NR+13)",2:"(NR+13)",2";
+    print "COPYSTYLE "'${kaiso_sheet}'" T6 "(NR+13)",3:"(NR+13)",3";
+    print "COPYSTYLE "'${kaiso_sheet}'" U6 "(NR+13)",4:"(NR+13)",13";
+    print "COPYSTYLE "'${kaiso_sheet}'" V6 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "'${kaiso_sheet}'" W6 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "'${kaiso_sheet}'" V6 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "'${kaiso_sheet}'" W6 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "'${kaiso_sheet}'" V6 "(NR+13)",20:"(NR+13)",20";
   } 
   else if($3 == 9999 && $4 == "_")  {
-    print "COPYSTYLE '${kaiso_sheet}' T5 "(NR+13)",3:"(NR+13)",3";
-    print "COPYSTYLE '${kaiso_sheet}' U5 "(NR+13)",4:"(NR+13)",13";
-    print "COPYSTYLE '${kaiso_sheet}' V5 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE '${kaiso_sheet}' W5 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE '${kaiso_sheet}' V5 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE '${kaiso_sheet}' W5 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE '${kaiso_sheet}' V5 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "'${kaiso_sheet}'" T5 "(NR+13)",3:"(NR+13)",3";
+    print "COPYSTYLE "'${kaiso_sheet}'" U5 "(NR+13)",4:"(NR+13)",13";
+    print "COPYSTYLE "'${kaiso_sheet}'" V5 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "'${kaiso_sheet}'" W5 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "'${kaiso_sheet}'" V5 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "'${kaiso_sheet}'" W5 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "'${kaiso_sheet}'" V5 "(NR+13)",20:"(NR+13)",20";
   } 
   #ライン集計
   else if($5 == 9999 && $6 == "_") {
-    print "COPYSTYLE '${kaiso_sheet}' T4 "(NR+13)",5:"(NR+13)",5";
-    print "COPYSTYLE '${kaiso_sheet}' U4 "(NR+13)",6:"(NR+13)",13";
-    print "COPYSTYLE '${kaiso_sheet}' V4 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE '${kaiso_sheet}' W4 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE '${kaiso_sheet}' V4 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE '${kaiso_sheet}' W4 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE '${kaiso_sheet}' V4 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "'${kaiso_sheet}'" T4 "(NR+13)",5:"(NR+13)",5";
+    print "COPYSTYLE "'${kaiso_sheet}'" U4 "(NR+13)",6:"(NR+13)",13";
+    print "COPYSTYLE "'${kaiso_sheet}'" V4 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "'${kaiso_sheet}'" W4 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "'${kaiso_sheet}'" V4 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "'${kaiso_sheet}'" W4 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "'${kaiso_sheet}'" V4 "(NR+13)",20:"(NR+13)",20";
   }
   #部門集計
   else if($7 == 9999 && $8 == "_") {
-    print "COPYSTYLE '${kaiso_sheet}' T3 "(NR+13)",7:"(NR+13)",7";
-    print "COPYSTYLE '${kaiso_sheet}' U3 "(NR+13)",8:"(NR+13)",13";
-    print "COPYSTYLE '${kaiso_sheet}' V3 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE '${kaiso_sheet}' W3 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE '${kaiso_sheet}' V3 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE '${kaiso_sheet}' W3 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE '${kaiso_sheet}' V3 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "'${kaiso_sheet}'" T3 "(NR+13)",7:"(NR+13)",7";
+    print "COPYSTYLE "'${kaiso_sheet}'" U3 "(NR+13)",8:"(NR+13)",13";
+    print "COPYSTYLE "'${kaiso_sheet}'" V3 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "'${kaiso_sheet}'" W3 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "'${kaiso_sheet}'" V3 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "'${kaiso_sheet}'" W3 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "'${kaiso_sheet}'" V3 "(NR+13)",20:"(NR+13)",20";
   }
   #ミニ部門CD集計 
   else if($9 == 9999 && $10 == "_") {
-    print "COPYSTYLE '${kaiso_sheet}' T2 "(NR+13)",9:"(NR+13)",9";
-    print "COPYSTYLE '${kaiso_sheet}' U2 "(NR+13)",10:"(NR+13)",13";
-    print "COPYSTYLE '${kaiso_sheet}' V2 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE '${kaiso_sheet}' W2 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE '${kaiso_sheet}' V2 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE '${kaiso_sheet}' W2 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE '${kaiso_sheet}' V2 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "'${kaiso_sheet}'" T2 "(NR+13)",9:"(NR+13)",9";
+    print "COPYSTYLE "'${kaiso_sheet}'" U2 "(NR+13)",10:"(NR+13)",13";
+    print "COPYSTYLE "'${kaiso_sheet}'" V2 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "'${kaiso_sheet}'" W2 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "'${kaiso_sheet}'" V2 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "'${kaiso_sheet}'" W2 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "'${kaiso_sheet}'" V2 "(NR+13)",20:"(NR+13)",20";
   }
   else if($11 == 9999 && $12 == "_") {
-    print "COPYSTYLE '${kaiso_sheet}' T1 "(NR+13)",11:"(NR+13)",11";
-    print "COPYSTYLE '${kaiso_sheet}' U1 "(NR+13)",12:"(NR+13)",13";
-    print "COPYSTYLE '${kaiso_sheet}' V1 "(NR+13)",14:"(NR+13)",15";
-    print "COPYSTYLE '${kaiso_sheet}' W1 "(NR+13)",16:"(NR+13)",16";
-    print "COPYSTYLE '${kaiso_sheet}' V1 "(NR+13)",17:"(NR+13)",18";
-    print "COPYSTYLE '${kaiso_sheet}' W1 "(NR+13)",19:"(NR+13)",19";
-    print "COPYSTYLE '${kaiso_sheet}' V1 "(NR+13)",20:"(NR+13)",20";
+    print "COPYSTYLE "'${kaiso_sheet}'" T1 "(NR+13)",11:"(NR+13)",11";
+    print "COPYSTYLE "'${kaiso_sheet}'" U1 "(NR+13)",12:"(NR+13)",13";
+    print "COPYSTYLE "'${kaiso_sheet}'" V1 "(NR+13)",14:"(NR+13)",15";
+    print "COPYSTYLE "'${kaiso_sheet}'" W1 "(NR+13)",16:"(NR+13)",16";
+    print "COPYSTYLE "'${kaiso_sheet}'" V1 "(NR+13)",17:"(NR+13)",18";
+    print "COPYSTYLE "'${kaiso_sheet}'" W1 "(NR+13)",19:"(NR+13)",19";
+    print "COPYSTYLE "'${kaiso_sheet}'" V1 "(NR+13)",20:"(NR+13)",20";
   }
   #統合品種セル
   if($10 != "_"){
     if(hinsyu_rendername!=$10){
       if(hinsyu_stratrow!=1&&hinsyu_rendername!=""){
-        print "VMERGECELL "${kaiso_sheet}" "NR+13-hinsyu_stratrow",11:"(NR+13)",11"; 
+        print "VMERGECELL 1 "NR+13-hinsyu_stratrow",11:"(NR+13)",11"; 
       }
       hinsyu_rendername=$10;
       hinsyu_stratrow=0;
