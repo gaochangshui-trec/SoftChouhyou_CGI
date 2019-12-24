@@ -105,5 +105,5 @@ else
 fi
 
 # 終了
-rm -f $tmp-*
+rm -rf $tmp-* &>/dev/null
 exit 0
