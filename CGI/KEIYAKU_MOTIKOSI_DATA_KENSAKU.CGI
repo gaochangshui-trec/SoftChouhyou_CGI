@@ -82,13 +82,13 @@ if [ ${flg} -eq 2 ];then # 画面データ取り込み
   [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
   
   # 画面データ取り込み
-  shl=KEIYAKU_MOTIKOSI_DATA_KENSAKU_TORIKOMI.SEARCH_DEBUG
+  shl=KEIYAKU_MOTIKOSI_DATA_KENSAKU_TORIKOMI.SEARCH
   ${shld}/${shl} ${kikan} $tmp-jan_motikosi >$tmp-end_data
   [ $? -eq 0 ] || ERROR_EXIT
 elif [ ${flg} -eq 3 ];then #持越し数出力
   :>$tmp-end_data
   # 出力データ抽出
-  shl=KEIYAKU_MOTIKOSI_DATA_KENSAKU.SEARCH_DEBUG
+  shl=KEIYAKU_MOTIKOSI_DATA_KENSAKU.SEARCH
   ${shld}/${shl} ${kikan}                   |
   delcol -c11                               |
   tail -n +2                                >$tmp-excel_data
@@ -100,7 +100,7 @@ elif [ ${flg} -eq 3 ];then #持越し数出力
   url=$(cat $tmp-urlfile)
 else
   # 画面データ抽出
-  shl=KEIYAKU_MOTIKOSI_DATA_KENSAKU.SEARCH_DEBUG
+  shl=KEIYAKU_MOTIKOSI_DATA_KENSAKU.SEARCH
   ${shld}/${shl} ${kikan} >$tmp-end_data
   [ $? -eq 0 ] || ERROR_EXIT
 fi
