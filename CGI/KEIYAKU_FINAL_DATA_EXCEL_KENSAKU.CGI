@@ -76,7 +76,6 @@ grep SYODANSYA                                            |
 kuniq -k2                                                 > $tmp-stodansya
 # 商談者
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
-
 cat $tmp-param                                            |
 grep KISETUTYPE                                           |
 kuniq -k2                                                 > $tmp-kisetutype
