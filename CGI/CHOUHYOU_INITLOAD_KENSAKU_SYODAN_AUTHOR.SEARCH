@@ -50,7 +50,10 @@ if [ -e ${lv4d}/KISETU/DATA/${kisetutype}/${year}/QTY_SYODAN_KEIYAKU ];then
   # 1.商談者CD
   hrjoin -i_ -k1 ${tbld}/JYUGYOIN_NAME                                   |
   # 1.商談者CD 2.商談者名
+  cat <(echo _ _) -                                                      |
+  # 1.商談者CD 2.商談者名
   cat <(echo id text) -
+  # 1.商談者CD 2.商談者名
   [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
 else
   echo id text
