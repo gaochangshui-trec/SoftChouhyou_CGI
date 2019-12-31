@@ -39,9 +39,17 @@ motikosiflg=$6 #消化率項目（持越し抜き）1：抜き
 #季節区分データ行
 kisetutype_num=$(rowc ${kisetufile})
 
-#年ID
-#year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+#今の年ID
+year_now=${sdate $Y}
+#ユーザーから選択の年ID
 year=${weekcd:0:4}
+
+if [ ${year} -gt ${year_now} ];then
+  year=${year_now}
+else
+  echo "true" >/dev/null
+fi
+
 #AW/SS取得
 kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
