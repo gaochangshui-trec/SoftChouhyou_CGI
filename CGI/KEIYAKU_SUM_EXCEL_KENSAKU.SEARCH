@@ -40,7 +40,7 @@ motikosiflg=$6 #消化率項目（持越し抜き）1：抜き
 kisetutype_num=$(rowc ${kisetufile})
 
 #今の年ID
-year_now=${sdate $Y}
+year_now=$(date +%Y)
 #ユーザーから選択の年ID
 year=${weekcd:0:4}
 
