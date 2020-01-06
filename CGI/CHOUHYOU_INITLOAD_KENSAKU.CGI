@@ -177,7 +177,7 @@ if [ ${chouhyoutype} == "KISETU" -a ${kisetutype} != "_" ];then
   #1.週 2.年
   awk '$1>="'${begweek}'"&&$1<="'${endweek}'"'                        |
   #1.週 2.年
-  selcol -c1                                                          |
+  kuniq -c1                                                           |
   #1.週
   LANG=C sort -k1,1nr                                                 |
   cat <(echo "weekcd") -                                              > $tmp-yearweek
