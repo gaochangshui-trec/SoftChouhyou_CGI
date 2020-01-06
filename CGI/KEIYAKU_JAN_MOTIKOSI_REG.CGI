@@ -149,6 +149,5 @@ cat $tmp-result
 #ロックファイル削除
 unlock -f ${lockd}/LOCK.KEIYAKU_JAN_MOTIKOSI_REG.CGI
 
-rm -rf $tmp-*
-
+rm -rf $tmp-* &>/dev/null
 exit 0

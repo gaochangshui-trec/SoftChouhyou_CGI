@@ -79,11 +79,11 @@ ERROR_EXIT(){
 # 処理部分
 #/////////////////////////////////////////////////////////////////////////
 
-echo ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${year}*                |
-tov                                                                    |
-awk '$1!="'${lv4d}'/KISETU/DATA/'${kisetuname}'/'${year}'/'${year}'*"' |
-awk '{print $1,substr($1,length($1)-5)}'                               |
-awk '$2<="'${endweek}'"{print $1}'                                     > $tmp-filelist
+echo ${lv4d}/KISETU/DATA/${kisetuname}/${year}/20*              |
+tov                                                             |
+awk '$1!="'${lv4d}'/KISETU/DATA/'${kisetuname}'/'${year}'/20*"' |
+awk '{print $1,substr($1,length($1)-5)}'                        |
+awk '$2<="'${endweek}'"{print $1}'                              > $tmp-filelist
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
 if [ -s $tmp-filelist ];then
@@ -295,8 +295,6 @@ awk '$2<0{print $1,"21"}'                > ${textcolor}
 #////////////////////////////////////////////////////////////////////////
 # 終了部分
 #/////////////////////////////////////////////////////////////////////////
-
 # 終了
-#rm -rf $tmp-*
-
+rm -rf $tmp-* &>/dev/null
 exit 0

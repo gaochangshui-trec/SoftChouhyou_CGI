@@ -96,6 +96,5 @@ cat $tmp-thisyeardiscount >> ${out_colorfile}
 # 終了部分
 #/////////////////////////////////////////////////////////////////////////
 # 終了
-rm -rf $tmp-*
-
+rm -rf $tmp-* &>/dev/null
 exit 0

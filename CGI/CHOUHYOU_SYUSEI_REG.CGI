@@ -191,8 +191,8 @@ ssh trial@${hostip} rm -rf ${apshld}/SET_SEMAPHORE/LOCK/CHOUHYOU_PLANQTY_REG.CGI
 #/////////////////////////////////////////////////////////////////////////
 # 終了
 
-rm -rf $tmp-*
 #ロックファイル削除
 unlock -f ${lockd}/LOCK.CHOUHYOU_PLANQTY_REG.CGI
 
+rm -rf $tmp-* &>/dev/null
 exit 0

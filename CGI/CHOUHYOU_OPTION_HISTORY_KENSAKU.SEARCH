@@ -62,6 +62,5 @@ crossjoin - $tmp-userinfo                       >${lv4d}/OPTION_HIS/${usedcdnew}
 # 終了部分
 #/////////////////////////////////////////////////////////////////////////
 # 終了
-
 rm -rf $tmp-* &>/dev/null
 exit 0

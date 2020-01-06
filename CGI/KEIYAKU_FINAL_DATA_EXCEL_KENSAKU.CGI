@@ -73,11 +73,9 @@ motikosiflg=$(readvalue -uMOTOKOSIFLG $tmp-param)
 
 cat $tmp-param                                            |
 grep SYODANSYA                                            |
-kuniq -k2                                                 |
+kuniq -k2                                                 > $tmp-stodansya
 # 商談者
-hejoin -v -k1 <(echo "_")                                 > $tmp-stodansya
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
-
 cat $tmp-param                                            |
 grep KISETUTYPE                                           |
 kuniq -k2                                                 > $tmp-kisetutype
@@ -153,5 +151,5 @@ cat $tmp-result
 #/////////////////////////////////////////////////////////////////////////
 # 終了
 #/////////////////////////////////////////////////////////////////////////
-#rm -rf $tmp-*
+rm -rf $tmp-* &>/dev/null
 exit 0
