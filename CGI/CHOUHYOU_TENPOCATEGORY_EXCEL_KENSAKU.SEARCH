@@ -74,9 +74,9 @@ kuniq -k1,2                                              > $tmp-kisetumst
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
 #有効期間以外の場合、最終週のデータを利用する対応
-echo ${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/${year}*                |
-tov                                                                         |
-awk '$1!="'${lv4d}'/KILLER/MAKE_DATA/'${kisetuname}'/'${year}'/'${year}'*"' > $tmp-filelist
+echo ${lv4d}/KILLER/MAKE_DATA/${kisetuname}/${year}/20*              |
+tov                                                                  |
+awk '$1!="'${lv4d}'/KILLER/MAKE_DATA/'${kisetuname}'/'${year}'/20*"' > $tmp-filelist
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
 if [ -s $tmp-filelist ];then
