@@ -106,8 +106,12 @@ else
     # 1:Jan 2:部門CD 3:カテゴリCD 4:サブカテゴリCD 5:セグメントCD 6:サブセグメントCD
     kuniq -k1                                                        |
     # 1:Jan
-    hejoin -k1 ${act_jand}/ACTIVE_JAN                                > $tmp-jan
+    hejoin -k1 ${act_jand}/ACTIVE_JAN                                |
     # 1:Jan
+    insseq                                                           |
+    # 1.順番 2.JAN
+    fmtfixed -w10 -c1                                                > $tmp-jan
+    # 1.順番 2.JAN
     [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT 
   elif [ ${flg} -eq 2 ] ; then 
     cat $tmp-param    |
