@@ -115,7 +115,13 @@ else
     selcol -c2        |
     # 1.JAN
     fmtfixed -w20 -c1 |
-    insseq            > $tmp-jan
+    insseq            |
+    # 1.順番 2.JAN
+    fmtfixed -w10 -c1 |
+    # 1.順番 2.JAN
+    ssort -k2@1       |
+    fstrow -k2        |
+    ssort -k1         > $tmp-jan
     # 1.順番 2.JAN
     #kuniq -k1         > $tmp-jan
     [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
