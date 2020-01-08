@@ -115,7 +115,9 @@ else
     selcol -c2        |
     # 1.JAN
     fmtfixed -w20 -c1 |
-    kuniq -k1         > $tmp-jan
+    insseq            > $tmp-jan
+    # 1.順番 2.JAN
+    #kuniq -k1         > $tmp-jan
     [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
   elif [ ${flg} -eq 3 ] ; then
     :> $tmp-jan
