@@ -110,8 +110,10 @@ else
     # 1:Jan
     insseq                                                           |
     # 1.順番 2.JAN
-    fmtfixed -w10 -c1                                                > $tmp-jan
+    fmtfixed -w10 -c1                                                |
     # 1.順番 2.JAN
+    selcol -c2 -c1                                                   > $tmp-jan
+    # 1.JAN 2.順番
     [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT 
   elif [ ${flg} -eq 2 ] ; then 
     cat $tmp-param    |
@@ -124,10 +126,13 @@ else
     fmtfixed -w10 -c1 |
     # 1.順番 2.JAN
     ssort -k2@1       |
-    fstrow -k2        |
-    ssort -k1         > $tmp-jan
     # 1.順番 2.JAN
-    #kuniq -k1         > $tmp-jan
+    fstrow -k2        |
+    # 1.順番 2.JAN
+    ssort -k1         |
+    # 1.順番 2.JAN
+    selcol -c2 -c1    > $tmp-jan
+    # 1.JAN 2.順番
     [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
   elif [ ${flg} -eq 3 ] ; then
     :> $tmp-jan
