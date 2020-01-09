@@ -119,6 +119,8 @@ else
   hejoin -k2 $tmp-tblkisetuid                                                     >$tmp-kisetu_data_one                                                            
   # 1:Jan 2:季節CD 3:部門CD 4:カテゴリCD 5:サブカテゴリCD 6:セグメントCD 7:サブセグメントCD      
   [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
+  
+  touchi '@ @' ${janfile}
 fi
 
 cat $tmp-kisetu_data_one                                                  |
@@ -143,7 +145,6 @@ hijoin -k2 ${tbld}/KISETU_NAME                                            |
 hijoin -k1 ${tbld}/JAN_NAME                                               |
 # 1:Jan 2:Jan名 3:季節CD 4:季節 5:部門CD 6:部門名 7:カテゴリCD 8:カテゴリ名 9:サブカテゴリCD
 # 10:サブカテゴリ名 11:セグメントCD 12:セグメント名 13:サブセグメントCD 14:サブセグメント名
-tee $tmp-testdata  |
 hrjoin -i0 -k1 $tmp-syodankeiyaku                                         |
 # 1:Jan 2:契約数(商談) 3:Jan名 4:季節CD 5:季節 6:部門CD 7:部門名 8:カテゴリCD 9:カテゴリ名
 # 10:サブカテゴリCD 11:サブカテゴリ名 12:セグメントCD 13:セグメント名 14:サブセグメントCD 15:サブセグメント名
@@ -167,7 +168,7 @@ hrjoin -i0 -k1 ${tbld}/JAN_TEIKA                                          |
 # 1:Jan 2.定価 3.初期売価 4.昨年契約残 5.メンテ契約数 6.契約数(商談) 7:Jan名 8:季節CD 9:季節 10:部門CD 
 # 11:部門名 12:カテゴリCD 13:カテゴリ名 14:サブカテゴリCD 15:サブカテゴリ名 16:セグメントCD 17:セグメント名 
 # 18:サブセグメントCD 19:サブセグメント名 20.季節区分
-hrjoin -i@@@@ -k1 ${janfile}                                              |
+hrjoin -i"0000000000" -k1 ${janfile}                                      |
 # 1:Jan 2.順番 3.定価 4.初期売価 5.昨年契約残 6.メンテ契約数 7.契約数(商談) 8:Jan名 9:季節CD 10:季節
 # 11:部門CD 12:部門名 13:カテゴリCD 14:カテゴリ名 15:サブカテゴリCD 16:サブカテゴリ名 17:セグメントCD 18:セグメント名 
 # 19:サブセグメントCD 20:サブセグメント名 21.季節区分
