@@ -40,6 +40,7 @@ year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 #AW/SS取得
 kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+kikanname=$(awk '$1=="'${kikan}'"{print $2}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 
 #マスタ季節取得
 hejoin -k1 <(echo ${kisetuid}) ${lv4d}/KISETU/MASTER/COMMON/MST_KISETUTYPE_TBLKISETU |
@@ -134,7 +135,7 @@ hrjoin -i0 -k1 $tmp-syodankeiyaku                                         |
 hijoin -k1 $tmp-janfile                                                   |
 # 1:Jan 2:昨年契約残 3:契約数 4:契約数(商談) 5:Jan名 6:季節CD 7:季節 8:部門CD 9:部門名 10:カテゴリCD 
 # 11:カテゴリ名 12:サブカテゴリCD 13:サブカテゴリ名 14:セグメントCD 15:セグメント名 16:サブセグメントCD 17:サブセグメント名
-crossjoin - <(echo ${kisetuname})                                         |
+crossjoin - <(echo ${kikanname})                                          |
 # 1:Jan 2:昨年契約残 3:契約数 4:契約数(商談) 5:Jan名 6:季節CD 7:季節 8:部門CD 9:部門名 10:カテゴリCD 
 # 11:カテゴリ名 12:サブカテゴリCD 13:サブカテゴリ名 14:セグメントCD 15:セグメント名 16:サブセグメントCD 17:サブセグメント名 
 # 18.季節区分
