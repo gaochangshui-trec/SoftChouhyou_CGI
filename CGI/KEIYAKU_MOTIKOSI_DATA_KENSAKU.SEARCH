@@ -33,6 +33,7 @@ tbld=/SKCWEB/TBL
 kikan=$1       #期間ID
 
 #年ID
+#year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 year=$(date +%Y)
 #AW/SS取得
 kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
