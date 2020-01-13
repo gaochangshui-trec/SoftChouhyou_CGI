@@ -65,7 +65,7 @@ fi
 #該当期間の終了週
 endweek=$(sdate -w ${eday}d)
 #該当期間の終了年
-endyear=$(${endweek:0:4})
+endyear=${endweek:0:4}
 if [ ${year} > ${endyear} ];then
   year=${endyear}
 fi
