@@ -11,7 +11,7 @@
 # 初期設定
 #/////////////////////////////////////////////////////////////////////////
 
-# 環境変数設定
+#   環境変数設定
 export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
 export LANG=ja_JP.UTF-8
 
@@ -59,6 +59,10 @@ weekcd=$(readvalue -uWEEKCD $tmp-param) # 週CD
 usercd=$(readvalue -uUSERCD $tmp-param|fmtfixed -w10 -c1)
 [ -z ${usercd} ] && ERROR_EXIT
 
+#契約数合計 1：あり ２：なし ３：すべて
+totalnumflg=$(readvalue -uTOTALNUM $tmp-param)
+[ -z ${totalnumflg} ] && ERROR_EXIT
+
 #消化率項目（持越し抜き）1：抜き
 motikosiflg=$(readvalue -uMOTOKOSIFLG $tmp-param)
 [ -z ${motikosiflg} ] && ERROR_EXIT
@@ -76,11 +80,11 @@ ${shld}/${shl} 0001 $(basename $0) ${usercd}
 :> $tmp-venderdata
 :> $tmp-hinsyudata
 shl=KEIYAKU_SUM_EXCEL_KENSAKU.SEARCH
-${shld}/${shl} ${kikan} ${weekcd} $tmp-venderdata $tmp-hinsyudata $tmp-kisetutype ${motikosiflg}
+${shld}/${shl} ${kikan} ${weekcd} $tmp-venderdata $tmp-hinsyudata $tmp-kisetutype ${motikosiflg} ${totalnumflg}
 [ $? -eq 0 ] || ERROR_EXIT
 
 shl=KEIYAKU_SUM_EXCEL_FORMAT.SEARCH
-${shld}/${shl} $tmp ${usercd} $tmp-venderdata $tmp-hinsyudata ${weekcd} ${kikan} $tmp-kisetutype ${motikosiflg}> $tmp-urlfile
+${shld}/${shl} $tmp ${usercd} $tmp-venderdata $tmp-hinsyudata ${weekcd} ${kikan} $tmp-kisetutype ${motikosiflg} ${totalnumflg}> $tmp-urlfile
 [ $? -eq 0 ] || ERROR_EXIT
 
 #echo '[" "]' > $tmp-sted

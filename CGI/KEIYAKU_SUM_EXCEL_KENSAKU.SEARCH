@@ -10,7 +10,7 @@
 # 初期設定
 #/////////////////////////////////////////////////////////////////////////
 
-# 環境変数設定
+#   環境変数設定
 export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
 export LANG=ja_JP.UTF-8
 
@@ -28,7 +28,7 @@ lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
 tbld=/SKCWEB/TBL
 
 # 変数チェック
-[ $# -ne 6 ] && exit 1 
+[ $# -ne 7 ] && exit 1 
 
 kikan=$1       #期間ID
 weekcd=$2      #週CD           
@@ -36,6 +36,7 @@ venderdata=$3  #ベンダー別データ
 hinsyudata=$4  #品種別データ
 kisetufile=$5  #季節区分ID
 motikosiflg=$6 #消化率項目（持越し抜き）1：抜き
+totalnumflg=$7 #契約数合計 1：あり ２：なし ３：すべて
 #季節区分データ行
 kisetutype_num=$(rowc ${kisetufile})
 
@@ -83,21 +84,29 @@ ERROR_EXIT(){
 #/////////////////////////////////////////////////////////////////////////
 # 処理部分
 #/////////////////////////////////////////////////////////////////////////
+#契約数合計 1：あり ２：なし ３：すべて 
+if [ ${totalnumflg} -eq 1 ];then
+  endname="_GTZERO"
+elif [ ${totalnumflg} -eq 2 ];then
+  endname="_LEZERO"
+else
+  endname=""
+fi
 
 #季節区分より、ファイル判断
 cat << FIN > $tmp-kisetutype_file
-AW 01@02 VENDER_BETU 1
-SS 01@02 VENDER_BETU 1
-AW 01 VENDER_BETU_AUTUMN 1
-AW 02 VENDER_BETU_WINTER 1
-SS 01 VENDER_BETU_SPRING 1
-SS 02 VENDER_BETU_SUMMER 1
-AW 01@02 HINSYU_BETU 2
-SS 01@02 HINSYU_BETU 2
-AW 01 HINSYU_BETU_AUTUMN 2
-AW 02 HINSYU_BETU_WINTER 2
-SS 01 HINSYU_BETU_SPRING 2
-SS 02 HINSYU_BETU_SUMMER 2
+AW 01@02 VENDER_BETU${endname} 1
+SS 01@02 VENDER_BETU${endname} 1
+AW 01 VENDER_BETU_AUTUMN${endname} 1
+AW 02 VENDER_BETU_WINTER${endname} 1
+SS 01 VENDER_BETU_SPRING${endname} 1
+SS 02 VENDER_BETU_SUMMER${endname} 1
+AW 01@02 HINSYU_BETU${endname} 2
+SS 01@02 HINSYU_BETU${endname} 2
+AW 01 HINSYU_BETU_AUTUMN${endname} 2
+AW 02 HINSYU_BETU_WINTER${endname} 2
+SS 01 HINSYU_BETU_SPRING${endname} 2
+SS 02 HINSYU_BETU_SUMMER${endname} 2
 FIN
 
 #ベンダー別

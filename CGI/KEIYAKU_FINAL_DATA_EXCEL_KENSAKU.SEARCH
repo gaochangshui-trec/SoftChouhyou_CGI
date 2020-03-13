@@ -5,12 +5,13 @@
 #
 # Written by Tan.zhihui(TRE・CHINA) / Date : 23 Aug. 2019
 # Alter by Zhang.Yunfeng(TRE・CHINA) / Date : 2 Dec. 2019
+# Alter by Wang.Yan(TRE・CHINA) / Date : 5 Mar. 2020
 
 #/////////////////////////////////////////////////////////////////////////
 # 初期設定
 #/////////////////////////////////////////////////////////////////////////
 
-# 環境変数設定
+#   環境変数設定
 export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
 export LANG=ja_JP.UTF-8
 
@@ -28,7 +29,7 @@ lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
 tbld=/SKCWEB/TBL
 
 # 変数チェック
-[ $# -ne 10 ] && exit 1 
+[ $# -ne 11 ] && exit 1 
 
 kikan=$1       #期間ID
 janfile=$2     #JANファイル           
@@ -40,6 +41,7 @@ merge_text=$7  #複数ヘッダー内容
 bgcolor=$8  #文字カラー
 textcolor=$9
 motikosiflg=${10} #消化率項目（持越し抜き）1：抜き
+totalnumflg=${11} #契約数合計 1：あり ２：なし ３：すべて
 thisweek=$(sdate thisweek)
 #年ID
 # year=$(awk '$1=="'${kikan}'"{print $3}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
@@ -66,7 +68,7 @@ fi
 endweek=$(sdate -w ${eday}d)
 #該当期間の終了年
 endyear=${endweek:0:4}
-if [ ${year} > ${endyear} ];then
+if [ ${year} -gt ${endyear} ];then
   year=${endyear}
 fi
 
@@ -141,12 +143,24 @@ if [ -s ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/CHOUHYO_SHOW${endf
   fi                                                                                    > $tmp-show_data
   [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
   
-  # JANと階層条件のとき
-  if [ -s ${janfile} ];then
-    hejoin -k7 ${janfile} $tmp-show_data > $tmp-jan_result
+  #契約数合計 1：あり ２：なし ３：すべて 
+  if [ ${totalnumflg} -eq 1 ];then
+    awk '$20>"0"{print $0}' $tmp-show_data > $tmp-total_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  elif [ ${totalnumflg} -eq 2 ];then
+    awk '$20<="0"{print $0}' $tmp-show_data > $tmp-total_result
     [ $? -eq 0 ] || ERROR_EXIT
   else
-    cp $tmp-show_data $tmp-jan_result
+    cp $tmp-show_data $tmp-total_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  fi
+  
+  # JANと階層条件のとき
+  if [ -s ${janfile} ];then
+    hejoin -k7 ${janfile} $tmp-total_result > $tmp-jan_result
+    [ $? -eq 0 ] || ERROR_EXIT
+  else
+    cp $tmp-total_result $tmp-jan_result
     [ $? -eq 0 ] || ERROR_EXIT
   fi
 

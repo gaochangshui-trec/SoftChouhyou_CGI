@@ -11,7 +11,7 @@
 # 初期設定
 #/////////////////////////////////////////////////////////////////////////
 
-# 環境変数設定
+#   環境変数設定
 export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
 export LANG=ja_JP.UTF-8
 
@@ -32,7 +32,7 @@ dwnd=/home/trial/AP/SOFT_CHOUHYOU/DOWNLOAD/${sday}
 hostip=$(readvalue -uEXCEL_OUT ${lv4d}/TBL/IP_CONFIG)
 expass=http://${hostip}/~trial/SOFT_CHOUHYOU/DOWNLOAD/${sday}
 # 引数の確認
-[ $# -ne 8 ] && exit 1
+[ $# -ne 9 ] && exit 1
 
 # 1.Inputファイル
 tmp=$1-$(basename $0)_$$
@@ -48,7 +48,8 @@ yearweek=$5    #201935
 kikan=$6       #期間
 kisetufile=$7  #季節区分ID
 motikosiflg=$8 #消化率項目（持越し抜き）1：抜き
-zipname="集計帳票"_${sday}_${usercd}.zip
+totalnumflg=$9 #契約数合計 1：あり ２：なし ３：すべて
+
 # エラー時の終了処理定義
 ERROR_EXIT(){
   exit 1
@@ -69,11 +70,19 @@ kisetuname=$(awk '$1=="'${kikan}'"{print $2}' ${lv4d}/KISETU/MASTER/COMMON/MST_K
 kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 kisetutypename=$(hejoin -k1 ${kisetufile} ${lv4d}/KISETU/MASTER/COMMON/MST_KISETUTYPE|awk '$3=="'${kisetuid}'"{print $2}'|toh -l. )
 
+#契約数合計 1：あり ２：なし ３：すべて  
+if [ ${totalnumflg} -eq 1 ];then
+  totalname="(契約数合計あり)"
+elif [ ${totalnumflg} -eq 2 ];then
+  totalname="(契約数合計なし)"
+else
+  totalname=""
+fi
+
 :> $tmp-script
-
 #ファイル名
-filename="【"${kisetuname}"_"${kisetutypename}"】季節集計帳票_"${yearweek:4:2}"w"
-
+filename="【"${kisetuname}"_"${kisetutypename}"】季節集計帳票"${totalname}"_"${yearweek:4:2}"w"
+zipname="集計帳票"${totalname}_${sday}.zip
 kaiso_sheet=2
 vender_sheet=3
 

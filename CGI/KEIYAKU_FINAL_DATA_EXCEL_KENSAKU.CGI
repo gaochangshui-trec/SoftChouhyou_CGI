@@ -5,12 +5,13 @@
 #
 # Written by Tan.zhihui(TRE・CHINA) / Date : 27 Aug. 2019
 # Alter by Zhang.Yunfeng(TRE・CHINA) / Date : 2 Dec. 2019
+# Alter by Wang.Yan(TRE・CHINA) / Date : 5 Mar. 2020
 
 #/////////////////////////////////////////////////////////////////////////
 # 初期設定
 #/////////////////////////////////////////////////////////////////////////
 
-# 環境変数設定
+#   環境変数設定
 export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
 export LANG=ja_JP.UTF-8
 
@@ -67,6 +68,10 @@ flg=$(readvalue -uFLG $tmp-param) # 1:階層設定、2：JAN入力、3：なし
 usercd=$(readvalue -uUSERCD $tmp-param|fmtfixed -w10 -c1)
 [ -z ${usercd} ] && ERROR_EXIT
 
+#契約数合計 1：あり ２：なし ３：すべて
+totalnumflg=$(readvalue -uTOTALNUM $tmp-param)
+[ -z ${totalnumflg} ] && ERROR_EXIT
+
 #消化率項目（持越し抜き）1：抜き
 motikosiflg=$(readvalue -uMOTOKOSIFLG $tmp-param)
 [ -z ${motikosiflg} ] && ERROR_EXIT
@@ -116,7 +121,7 @@ fi
 :> $tmp-bgcolor
 :> $tmp-textcolor
 shl=KEIYAKU_FINAL_DATA_EXCEL_KENSAKU.SEARCH
-${shld}/${shl} ${kikan} $tmp-jan $tmp-kisetutype $tmp-stodansya $tmp-datahead $tmp-headname $tmp-merge_text $tmp-bgcolor $tmp-textcolor ${motikosiflg}>$tmp-end_data
+${shld}/${shl} ${kikan} $tmp-jan $tmp-kisetutype $tmp-stodansya $tmp-datahead $tmp-headname $tmp-merge_text $tmp-bgcolor $tmp-textcolor ${motikosiflg} ${totalnumflg}>$tmp-end_data
 [ $? -eq 0 ] || ERROR_EXIT
 
 if [ ! -s $tmp-end_data ];then
@@ -128,7 +133,7 @@ else
 fi
 
 shl=KEIYAKU_FINAL_DATA_EXCEL_FORMAT.SEARCH
-${shld}/${shl} $tmp $tmp-end_data ${usercd} $tmp-headname $tmp-merge_text $tmp-bgcolor $tmp-textcolor ${kikan} $tmp-kisetutype> $tmp-urlfile
+${shld}/${shl} $tmp $tmp-end_data ${usercd} $tmp-headname $tmp-merge_text $tmp-bgcolor $tmp-textcolor ${kikan} $tmp-kisetutype ${totalnumflg}> $tmp-urlfile
 [ $? -eq 0 ] || ERROR_EXIT
 
 #echo '[" "]' > $tmp-sted
