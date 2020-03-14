@@ -149,16 +149,19 @@ echo COPYSTYLE ${tanpin_sheet} K1 4,11:$data_rowc,12                            
 echo COPYSTYLE ${tanpin_sheet} G1 4,13:$data_rowc,13                                       >> $tmp-script
 #原価から　プロパー売数まで
 echo COPYSTYLE ${tanpin_sheet} S1 4,17:$data_rowc,23                                       >> $tmp-script
+#契約残
+echo COPYSTYLE ${tanpin_sheet} T1 4,22:$data_rowc,22                                       >> $tmp-script
+#契約プロパー消化率
+echo COPYSTYLE ${tanpin_sheet} X1 4,24:$data_rowc,24                                       >> $tmp-script
 #現在在庫から　計画数まで
 echo COPYSTYLE ${tanpin_sheet} Y1 4,25:$data_rowc,29                                       >> $tmp-script
 #マイナス計画残対応
 echo COPYSTYLE ${tanpin_sheet} T1 4,30:$data_rowc,30                                       >> $tmp-script
-#契約プロパー消化率
-echo COPYSTYLE ${tanpin_sheet} T1 4,24:$data_rowc,24                                       >> $tmp-script
 #計画消化率
 echo COPYSTYLE ${tanpin_sheet} AE1 4,31:$data_rowc,31                                      >> $tmp-script
 #今年売数合計、センター在庫、データ千分
 echo COPYSTYLE ${tanpin_sheet} AF1 4,${ucol}:$data_rowc,${data_colc}                            >> $tmp-script
+
 
 cat ${bgcolor}                                                               |
 # 1.JAN 2.行番号 3.週CD 4.列番号
