@@ -91,40 +91,42 @@ tanpin_sheet=2
 :> $tmp-script
 data_rowc=$[$(rowc ${datafile})+3]
 data_colc=$(colc ${datafile})
+ucol=31 #今年売数合計列番号
+ccol=32 #センター在庫列番号
 
 #実績列数
-jiseki_colcnt=$(cat ${headname}|selcol -c32,NF |tov|awk '$1=="売数"'|rowc)
+jiseki_colcnt=$(cat ${headname}|selcol -c${ccol},NF |tov|awk '$1=="売数"'|rowc)
 
 #センター在庫列数
-center_colcnt=$[data_colc-31-jiseki_colcnt]
+center_colcnt=$[data_colc-${ucol}-jiseki_colcnt]
 
 seq 1 ${center_colcnt}       |
 awk '{print "センター在庫"}' |
 toh                          > $tmp-centerhead
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
-selcol -c32,$[31+${center_colcnt}] ${headname} > $tmp-centersisya
+selcol -c${ccol},$[${ucol}+${center_colcnt}] ${headname} > $tmp-centersisya
 [ $? -eq 0 ] || ERROR_EXIT
 
 echo FILLDATA ${tanpin_sheet} AF2 $tmp-centerhead >> $tmp-script
 echo FILLDATA ${tanpin_sheet} AF3 $tmp-centersisya >> $tmp-script
 
-selcol -c1,31 ${headname}            > $tmp-headname
+selcol -c1,${ucol} ${headname}            > $tmp-headname
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
 cat ${merge_text}                    |
 tail -n1                             |
-selcol -c$[32+${center_colcnt}],NF   > $tmp-weekname
+selcol -c$[${ccol}+${center_colcnt}],NF   > $tmp-weekname
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
 cat ${headname}                      |
-selcol -c$[32+${center_colcnt}],NF   > $tmp-jisekiname
+selcol -c$[${ccol}+${center_colcnt}],NF   > $tmp-jisekiname
 [ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
 
 #表頭
 echo FILLDATA ${tanpin_sheet} 2,1 $tmp-headname                        >> $tmp-script
-echo FILLDATA ${tanpin_sheet} 2,$[32+${center_colcnt}] $tmp-weekname   >> $tmp-script
-echo FILLDATA ${tanpin_sheet} 3,$[32+${center_colcnt}] $tmp-jisekiname >> $tmp-script
+echo FILLDATA ${tanpin_sheet} 2,$[${ccol}+${center_colcnt}] $tmp-weekname   >> $tmp-script
+echo FILLDATA ${tanpin_sheet} 3,$[${ccol}+${center_colcnt}] $tmp-jisekiname >> $tmp-script
 
 #データ明細
 tail -n +2 ${datafile}                              > $tmp-datafile
@@ -133,11 +135,11 @@ echo FILLDATA ${tanpin_sheet} A4 $tmp-datafile                                  
 
 #書式ブラシ
 #表頭のセンター在庫
-echo COPYSTYLE ${tanpin_sheet} AF2 2,32:2,$[31+center_colcnt]                              >> $tmp-script
-echo COPYSTYLE ${tanpin_sheet} AF3 3,32:3,$[31+center_colcnt]                              >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AF2 2,${ccol}:2,$[${ucol}+center_colcnt]                              >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AF3 3,${ccol}:3,$[${ucol}+center_colcnt]                              >> $tmp-script
 #表頭の週
-echo COPYSTYLE ${tanpin_sheet} AI1 2,$[32+center_colcnt]:2,${data_colc}                    >> $tmp-script
-echo COPYSTYLE ${tanpin_sheet} AJ1 3,$[32+center_colcnt]:3,${data_colc}                    >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AI1 2,$[${ccol}+center_colcnt]:2,${data_colc}                    >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AJ1 3,$[${ccol}+center_colcnt]:3,${data_colc}                    >> $tmp-script
 #jancd
 echo COPYSTYLE ${tanpin_sheet} G1 4,7:$data_rowc,7                                         >> $tmp-script
 #商談者CD
@@ -157,7 +159,7 @@ echo COPYSTYLE ${tanpin_sheet} W1 4,23:$data_rowc,23                            
 #計画消化率
 echo COPYSTYLE ${tanpin_sheet} AD1 4,30:$data_rowc,30                                      >> $tmp-script
 #今年売数合計、センター在庫、データ千分
-echo COPYSTYLE ${tanpin_sheet} AE1 4,31:$data_rowc,${data_colc}                            >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AE1 4,${ucol}:$data_rowc,${data_colc}                            >> $tmp-script
 
 cat ${bgcolor}                                                               |
 # 1.JAN 2.行番号 3.週CD 4.列番号
