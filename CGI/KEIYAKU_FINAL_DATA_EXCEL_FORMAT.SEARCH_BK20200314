@@ -1,0 +1,211 @@
+#!/bin/bash -xv
+#
+# KEIYAKU_FINAL_DATA_EXCEL_FORMAT.SEARCH >>> 契約帳票画面EXCEL出力
+# Usage : KEIYAKU_FINAL_DATA_EXCEL_FORMAT.SEARCH
+#
+# Written by Li.dan(TRE・CHINA) / Date : 29 Jan. 2019
+# Alter by Zhang.Yunfeng(TRE・CHINA) / Date : 3 Dec. 2019
+# Alter by Wang.Yan(TRE・CHINA) / Date : 5 Mar. 2020
+
+#/////////////////////////////////////////////////////////////////////////
+# 初期設定
+#/////////////////////////////////////////////////////////////////////////
+
+#   環境変数設定
+export PATH=/home/SMART:/home/SMART_TRIAL:/usr/local/bin:${PATH}
+export LANG=ja_JP.UTF-8
+
+## ログディレクトリの定義
+cgishld=/home/trial/AP/SOFT_CHOUHYOU
+logd=${cgishld}/LOG
+lv4d=/home/trial/APDATA/SOFT_CHOUHYOU/POMPA
+
+##走行ログの記録
+echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
+exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
+
+# ディレクトリ定義
+formatd=${cgishld}/EXCEL_FORMAT
+sday=$(date +%Y%m%d)
+
+dwnd=/home/trial/AP/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+hostip=$(readvalue -uEXCEL_OUT ${lv4d}/TBL/IP_CONFIG)
+expass=http://${hostip}/~trial/SOFT_CHOUHYOU/DOWNLOAD/${sday}
+
+# 引数の確認
+[ $# -ne 10 ] && exit 1
+
+# 1.Inputファイル
+tmp=$1-$(basename $0)_$$
+datafile=$2
+usercd=$3
+headname=$4
+merge_text=$5
+bgcolor=$6  #背景カラー
+textcolor=$7 #テキストカラー
+kikan=$8       #期間
+kisetufile=$9  #季節区分ID
+totalnumflg=${10} #契約数合計 1：あり ２：なし ３：すべて
+
+# エラー時の終了処理定義
+ERROR_EXIT(){
+  exit 1
+}
+
+#/////////////////////////////////////////////////////////////////////////
+# 処理部分
+#/////////////////////////////////////////////////////////////////////////
+mkdir -p ${formatd}
+[ $? -eq 0 ] || ERROR_EXIT
+#期間名
+kisetuname=$(awk '$1=="'${kikan}'"{print $2}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+
+#季節区分名取得
+kisetuid=$(awk '$1=="'${kikan}'"{print $4}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
+kisetutypename=$(hejoin -k1 ${kisetufile} ${lv4d}/KISETU/MASTER/COMMON/MST_KISETUTYPE|awk '$3=="'${kisetuid}'"{print $2}'|toh -l. )
+
+#契約数合計 1：あり ２：なし ３：すべて  
+if [ ${totalnumflg} -eq 1 ];then
+  totalname="(契約数合計あり)"
+elif [ ${totalnumflg} -eq 2 ];then
+  totalname="(契約数合計なし)"
+else
+  totalname=""
+fi
+  
+:> $tmp-script
+zipname="単品帳票"${totalname}_${sday}.zip
+filename="【"${kisetuname}"_"${kisetutypename}"】季節単品帳票"${totalname}_$(date +%Y%m%d%H%M%S)
+
+mkdir -p $tmp/outfile
+[ $? -eq 0 ] || ERROR_EXIT
+
+tanpin_sheet=2
+
+# datafile
+# 1:季節 2:部門 3:カテゴリ 4:サブカテゴリ 5:セグメント 6:サブセグメント 7:JAN 8:商品名 9:商談者CD 10:商談者
+# 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残
+# 19:今年契約数 20:契約数合計 21:契約残 22:プロパー売数 23:契約プロパー消化率（持越し抜き） 24:現在在庫 25:消化日数
+# 26:先週売数 27:期首在庫 28:計画数 29:計画残 30:計画消化率（持越し抜き） 31:今年売数合計 32:地域別センター在庫 ...
+
+:> $tmp-script
+data_rowc=$[$(rowc ${datafile})+3]
+data_colc=$(colc ${datafile})
+
+#実績列数
+jiseki_colcnt=$(cat ${headname}|selcol -c32,NF |tov|awk '$1=="売数"'|rowc)
+
+#センター在庫列数
+center_colcnt=$[data_colc-31-jiseki_colcnt]
+
+seq 1 ${center_colcnt}       |
+awk '{print "センター在庫"}' |
+toh                          > $tmp-centerhead
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+selcol -c32,$[31+${center_colcnt}] ${headname} > $tmp-centersisya
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo FILLDATA ${tanpin_sheet} AF2 $tmp-centerhead >> $tmp-script
+echo FILLDATA ${tanpin_sheet} AF3 $tmp-centersisya >> $tmp-script
+
+selcol -c1,31 ${headname}            > $tmp-headname
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+cat ${merge_text}                    |
+tail -n1                             |
+selcol -c$[32+${center_colcnt}],NF   > $tmp-weekname
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+cat ${headname}                      |
+selcol -c$[32+${center_colcnt}],NF   > $tmp-jisekiname
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+#表頭
+echo FILLDATA ${tanpin_sheet} 2,1 $tmp-headname                        >> $tmp-script
+echo FILLDATA ${tanpin_sheet} 2,$[32+${center_colcnt}] $tmp-weekname   >> $tmp-script
+echo FILLDATA ${tanpin_sheet} 3,$[32+${center_colcnt}] $tmp-jisekiname >> $tmp-script
+
+#データ明細
+tail -n +2 ${datafile}                              > $tmp-datafile
+[ $? -eq 0 ] || ERROR_EXIT
+echo FILLDATA ${tanpin_sheet} A4 $tmp-datafile                                             >> $tmp-script
+
+#書式ブラシ
+#表頭のセンター在庫
+echo COPYSTYLE ${tanpin_sheet} AF2 2,32:2,$[31+center_colcnt]                              >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AF3 3,32:3,$[31+center_colcnt]                              >> $tmp-script
+#表頭の週
+echo COPYSTYLE ${tanpin_sheet} AI1 2,$[32+center_colcnt]:2,${data_colc}                    >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AJ1 3,$[32+center_colcnt]:3,${data_colc}                    >> $tmp-script
+#jancd
+echo COPYSTYLE ${tanpin_sheet} G1 4,7:$data_rowc,7                                         >> $tmp-script
+#商談者CD
+echo COPYSTYLE ${tanpin_sheet} I1 4,9:$data_rowc,9                                         >> $tmp-script
+#商談契約数、初期売価
+echo COPYSTYLE ${tanpin_sheet} K1 4,11:$data_rowc,12                                       >> $tmp-script
+#ベンダーCD
+echo COPYSTYLE ${tanpin_sheet} G1 4,13:$data_rowc,13                                       >> $tmp-script
+#原価から　プロパー売数まで
+echo COPYSTYLE ${tanpin_sheet} R1 4,16:$data_rowc,22                                       >> $tmp-script
+#現在在庫から　計画数まで
+echo COPYSTYLE ${tanpin_sheet} X1 4,24:$data_rowc,28                                       >> $tmp-script
+#マイナス計画残対応
+echo COPYSTYLE ${tanpin_sheet} S1 4,29:$data_rowc,29                                       >> $tmp-script
+#契約プロパー消化率
+echo COPYSTYLE ${tanpin_sheet} W1 4,23:$data_rowc,23                                       >> $tmp-script
+#計画消化率
+echo COPYSTYLE ${tanpin_sheet} AD1 4,30:$data_rowc,30                                      >> $tmp-script
+#今年売数合計、センター在庫、データ千分
+echo COPYSTYLE ${tanpin_sheet} AE1 4,31:$data_rowc,${data_colc}                            >> $tmp-script
+
+cat ${bgcolor}                                                               |
+# 1.JAN 2.行番号 3.週CD 4.列番号
+##awk '{print "COPYSTYLE 1 AG1 "$2","$4":"$2","$4}'                            >> $tmp-script
+awk -v "sheetnum=${tanpin_sheet}" '{print "COPYSTYLE "sheetnum" AG1 "$2","$4":"$2","$4}'                            >> $tmp-script
+# 1.行番号 2.列番号 3.行番号 4.列番号
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+cat ${textcolor}                                                               |
+# 1.行番号 2.列番号
+##awk '{print "COPYSTYLE 1 AH1 "$1","$2":"$1","$2}'                              >> $tmp-script
+awk -v "sheetnum=${tanpin_sheet}"  '{print "COPYSTYLE "sheetnum" AH1 "$1","$2":"$1","$2}'                              >> $tmp-script
+# 1.行番号 2.列番号 3.行番号 4.列番号
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+# EXCEL作成
+mkExcel -t${formatd}/SEASON_FORMAT.xlsx -o$tmp/outfile/${filename}.xlsx -S$tmp-script
+[ $? -eq 0 ] || ERROR_EXIT
+
+mkdir -p ${dwnd}_${usercd}
+[ $? -eq 0 ] || ERROR_EXIT
+
+rm -rf ${dwnd}_${usercd}/${zipname}
+[ $? -eq 0 ] || ERROR_EXIT
+
+echo $tmp/outfile/*    |
+tov                    |
+sed 's/\\/\\\\/g'      |
+while read xlsname ; do
+  a=$(nkf -sxLw <(echo $xlsname))
+  [ $? -eq 0 ] || ERROR_EXIT
+
+  b=$(echo $a  |awk '{print length($1)-1}')
+  [ $? -eq 0 ] || ERROR_EXIT
+  cp $xlsname ${a:0:$b}
+
+  zip -jgq ${dwnd}_${usercd}/${zipname} ${a:0:$b}
+  [ $? -eq 0 ] || ERROR_EXIT
+: ; done
+[ $(errchk ${PIPESTATUS[@]}) -eq 0 ] || ERROR_EXIT
+
+excelurl=${expass}_${usercd}/${zipname}
+
+echo ${excelurl}
+
+#/////////////////////////////////////////////////////////////////////////
+# 終了部分
+#/////////////////////////////////////////////////////////////////////////
+# 終了
+rm -rf $tmp-* &>/dev/null
+exit 0
