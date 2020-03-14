@@ -177,7 +177,7 @@ else
 fi
 
 #データ列数
-datacnt=$(colc $tmp-syodan_result)
+datacnt=$[$(colc $tmp-syodan_result) + 1]
 
 seq 1 ${datacnt}      |
 # 1.列ヘッダー
@@ -226,8 +226,7 @@ selcol -c7,12 -c1 -c15 -c2 -c17,19 -c3 -c21,22 -c14 -c23,NF   |
 # 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16.JAN登録日 17:原価 18:売価 19:昨年契約残
 # 20:今年契約数 21:契約数合計 22:契約残 23:プロパー売数 24:契約プロパー消化率（持越し抜き） 25:現在在庫 26:消化日数
 # 21:先週売数 28:期首在庫 29:計画数 30:計画残 31:計画消化率（持越し抜き） 32:今年売数合計 33:地域別センター在庫 ...
-
-cat $tmp-datahead -
+cat $tmp-datahead - 
 [ $(errchk ${PIPESTATUS[@]}) -ne 0 ] && ERROR_EXIT
 
 weekcnt=$(rowc ${lv4d}/KISETU/DATA/${kisetuname}/${year}/${thisweek}/WEEK_INFO${endf})
