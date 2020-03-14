@@ -84,15 +84,14 @@ tanpin_sheet=2
 
 # datafile
 # 1:季節 2:部門 3:カテゴリ 4:サブカテゴリ 5:セグメント 6:サブセグメント 7:JAN 8:商品名 9:商談者CD 10:商談者
-# 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:原価 17:売価 18:昨年契約残
-# 19:今年契約数 20:契約数合計 21:契約残 22:プロパー売数 23:契約プロパー消化率（持越し抜き） 24:現在在庫 25:消化日数
-# 26:先週売数 27:期首在庫 28:計画数 29:計画残 30:計画消化率（持越し抜き） 31:今年売数合計 32:地域別センター在庫 ...
-
+# 11:商談契約数 12:初期売価 13:ベンダーCD 14:ベンダー名 15:ベンダー納期 16:JAN登録日 17:原価 18:売価
+# 19:昨年契約残 20:今年契約数 21:契約数合計 22:契約残 23:プロパー売数 24:契約プロパー消化率（持越し抜き） 25:現在在庫
+# 26:消化日数 27:先週売数 28:期首在庫 29:計画数 30:計画残 31:計画消化率（持越し抜き） 32:今年売数合計 33:地域別センター在庫 ...
 :> $tmp-script
 data_rowc=$[$(rowc ${datafile})+3]
 data_colc=$(colc ${datafile})
-ucol=31 #今年売数合計列番号
-ccol=32 #センター在庫列番号
+ucol=32 #今年売数合計列番号
+ccol=33 #センター在庫列番号
 
 #実績列数
 jiseki_colcnt=$(cat ${headname}|selcol -c${ccol},NF |tov|awk '$1=="売数"'|rowc)
@@ -149,15 +148,15 @@ echo COPYSTYLE ${tanpin_sheet} K1 4,11:$data_rowc,12                            
 #ベンダーCD
 echo COPYSTYLE ${tanpin_sheet} G1 4,13:$data_rowc,13                                       >> $tmp-script
 #原価から　プロパー売数まで
-echo COPYSTYLE ${tanpin_sheet} R1 4,16:$data_rowc,22                                       >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} R1 4,17:$data_rowc,23                                       >> $tmp-script
 #現在在庫から　計画数まで
-echo COPYSTYLE ${tanpin_sheet} X1 4,24:$data_rowc,28                                       >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} X1 4,25:$data_rowc,29                                       >> $tmp-script
 #マイナス計画残対応
-echo COPYSTYLE ${tanpin_sheet} S1 4,29:$data_rowc,29                                       >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} S1 4,30:$data_rowc,30                                       >> $tmp-script
 #契約プロパー消化率
-echo COPYSTYLE ${tanpin_sheet} W1 4,23:$data_rowc,23                                       >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} W1 4,24:$data_rowc,24                                       >> $tmp-script
 #計画消化率
-echo COPYSTYLE ${tanpin_sheet} AD1 4,30:$data_rowc,30                                      >> $tmp-script
+echo COPYSTYLE ${tanpin_sheet} AD1 4,31:$data_rowc,31                                      >> $tmp-script
 #今年売数合計、センター在庫、データ千分
 echo COPYSTYLE ${tanpin_sheet} AE1 4,${ucol}:$data_rowc,${data_colc}                            >> $tmp-script
 
