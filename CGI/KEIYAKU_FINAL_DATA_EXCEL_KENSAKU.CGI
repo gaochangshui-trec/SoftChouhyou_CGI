@@ -124,7 +124,7 @@ shl=KEIYAKU_FINAL_DATA_EXCEL_KENSAKU.SEARCH
 ${shld}/${shl} ${kikan} $tmp-jan $tmp-kisetutype $tmp-stodansya $tmp-datahead $tmp-headname $tmp-merge_text $tmp-bgcolor $tmp-textcolor ${motikosiflg} ${totalnumflg}>$tmp-end_data
 [ $? -eq 0 ] || ERROR_EXIT
 
-if [ ! -s $tmp-end_data ];then
+if [ $(rowc $tmp-end_data) -eq 1 -a $(cat $tmp-end_data) == "F1" ];then
   echo '{"error":"2"}'
   exit 0
   rm -rf $tmp-*
