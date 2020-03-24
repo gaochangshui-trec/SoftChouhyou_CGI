@@ -46,6 +46,7 @@ thisweek=${year}${thisyearweek:4:2} #年週
 #AW/SS取得
 kisetuname=$(awk '$1=="'${kikan}'"{print $4=="1"?"SS":"AW"}' ${lv4d}/KISETU/MASTER/COMMON/MST_KIKAN)
 # ${in_datafile}
+# 8888
 #1:DIVCD 2:ラインCD 3:門CD 4:カテゴリCD  5:季節ID 6:週CD 
 #7:今年実績数 8:計画数 9:昨年実績数 10:今年在庫数 11:昨年在庫数
 
