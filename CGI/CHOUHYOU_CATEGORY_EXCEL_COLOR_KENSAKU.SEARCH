@@ -44,7 +44,7 @@ start_col=12                            #開始列
 datypecnt=5                             #データ種類個数
 start_loop_num=$[start_col+datypecnt-1] #処理開始列
 
-#カラー対応
+#カラー対応test
 bg_color="yellow"
 
 #週のデータ個数によってデータ作成
