@@ -17,7 +17,7 @@ export LANG=ja_JP.UTF-8
 cgishld=/home/trial/AP/SOFT_CHOUHYOU
 logd=${cgishld}/LOG
 
-##走行ログの記録
+##走行ログの記録---
 echo "${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$" &>/dev/null
 exec 2>${logd}/LOG.$(basename $0).$(date +%Y%m%d)_$(date +%H%M%S)_$$
 
